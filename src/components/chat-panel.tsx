@@ -165,7 +165,7 @@ export function ChatPanel({ agentId }: ChatPanelProps) {
                         className="w-1.5 h-1.5 rounded-full"
                         style={{
                           background: agent.color,
-                          animation: `chatDotPulse 1.4s ease-in-out ${dot * 0.2}s infinite`,
+                          animation: `typingDot 1.4s ease-in-out ${dot * 0.2}s infinite`,
                         }}
                       />
                     ))}
