@@ -693,8 +693,8 @@ export function ProfileView({ agent }: ProfileViewProps) {
         </div>
       </div>
 
-      {/* Bottom bar — hidden during demo and after completion */}
-      {!isComplete && !demoMode && (
+      {/* Bottom bar — hidden after completion */}
+      {!isComplete && (
         <div
           className="flex-shrink-0 border-t"
           style={{ background: "var(--white)", borderColor: "var(--border-light)" }}
@@ -703,7 +703,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
             <ChatInput
               agentId="profile"
               onSend={handleSend}
-              disabled={isTyping}
+              disabled={isTyping || demoMode}
             />
           </div>
         </div>
