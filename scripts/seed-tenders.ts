@@ -19,8 +19,18 @@ async function main() {
   const filtered = filterTenders(records);
   console.log(`Filtered to ${filtered.length} active tenders`);
 
-  // Take up to 500 tenders for hackathon
-  const tenders = filtered.slice(0, 500);
+  // Priority tenders that match the demo profile (janitorial, cleaning, RCMP, facility)
+  const DEMO_KEYWORDS = ["rcmp", "grc", "janitorial", "cleaning", "custodial", "hvac", "facility maintenance", "housekeeping"];
+  const priority = filtered.filter((r) => {
+    const text = `${r["title-titre-eng"] || ""} ${r["tenderDescription-descriptionAppelOffres-eng"] || ""} ${r["contractingEntityName"] || ""}`.toLowerCase();
+    return DEMO_KEYWORDS.some((kw) => text.includes(kw));
+  });
+  console.log(`Found ${priority.length} demo-relevant tenders (cleaning/RCMP/facility)`);
+
+  // Merge: priority tenders first, then fill to 500 from the rest
+  const priorityRefs = new Set(priority.map((r) => r["referenceNumber-numeroReference"]));
+  const rest = filtered.filter((r) => !priorityRefs.has(r["referenceNumber-numeroReference"]));
+  const tenders = [...priority, ...rest].slice(0, 500);
 
   // Batch insert
   for (let i = 0; i < tenders.length; i += BATCH_SIZE) {
