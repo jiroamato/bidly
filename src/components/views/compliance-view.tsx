@@ -213,7 +213,7 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
                         </div>
                         {item.action && (
                           <div
-                            className="mt-1.5 text-[10px] tracking-[1px] uppercase cursor-pointer hover:underline"
+                            className="mt-1.5 text-[10px] tracking-[1px] uppercase"
                             style={{ fontFamily: "var(--font-mono)", color: "var(--agent-compliance)" }}
                           >
                             {item.action}
