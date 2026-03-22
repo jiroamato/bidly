@@ -38,8 +38,19 @@ export async function POST(request: NextRequest) {
       messages: anthropicMessages,
     });
 
-    // Handle tool-use loop
+    // Handle tool-use loop — accumulate messages across iterations
+    const MAX_TOOL_ITERATIONS = 10;
+    let loopMessages = [...anthropicMessages];
+    let iterations = 0;
+
     while (response.stop_reason === "tool_use") {
+      if (++iterations > MAX_TOOL_ITERATIONS) {
+        return NextResponse.json(
+          { error: "Too many tool iterations — possible loop detected" },
+          { status: 500 }
+        );
+      }
+
       const toolUseBlocks = response.content.filter(
         (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
       );
@@ -55,16 +66,18 @@ export async function POST(request: NextRequest) {
         }))
       );
 
+      loopMessages = [
+        ...loopMessages,
+        { role: "assistant" as const, content: response.content },
+        { role: "user" as const, content: toolResults },
+      ];
+
       response = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
         max_tokens: 4096,
         system: systemPrompt,
         tools,
-        messages: [
-          ...anthropicMessages,
-          { role: "assistant", content: response.content },
-          { role: "user", content: toolResults },
-        ],
+        messages: loopMessages,
       });
     }
 

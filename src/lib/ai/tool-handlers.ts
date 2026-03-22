@@ -144,20 +144,20 @@ async function saveProgress(input: Record<string, any>): Promise<string> {
 
 function calculatePricing(input: Record<string, any>): string {
   const { line_items = [], province = "Ontario" } = input;
-  const hstRates: Record<string, number> = {
-    Ontario: 0.13,
-    "British Columbia": 0.12,
-    Alberta: 0.05,
-    Quebec: 0.14975,
-    "Nova Scotia": 0.15,
-    "New Brunswick": 0.15,
-    Manitoba: 0.12,
-    Saskatchewan: 0.11,
-    "Prince Edward Island": 0.15,
-    Newfoundland: 0.15,
+  const taxInfo: Record<string, { rate: number; label: string }> = {
+    Ontario: { rate: 0.13, label: "HST (13.0%)" },
+    "British Columbia": { rate: 0.12, label: "GST (5%) + PST (7%)" },
+    Alberta: { rate: 0.05, label: "GST (5%)" },
+    Quebec: { rate: 0.14975, label: "GST (5%) + QST (9.975%)" },
+    "Nova Scotia": { rate: 0.15, label: "HST (15.0%)" },
+    "New Brunswick": { rate: 0.15, label: "HST (15.0%)" },
+    Manitoba: { rate: 0.12, label: "GST (5%) + PST (7%)" },
+    Saskatchewan: { rate: 0.11, label: "GST (5%) + PST (6%)" },
+    "Prince Edward Island": { rate: 0.15, label: "HST (15.0%)" },
+    Newfoundland: { rate: 0.15, label: "HST (15.0%)" },
   };
 
-  const rate = hstRates[province] || 0.13;
+  const { rate, label: tax_label } = taxInfo[province] || { rate: 0.13, label: "HST (13.0%)" };
   const subtotal = line_items.reduce(
     (sum: number, item: any) => sum + (item.amount || 0),
     0
@@ -168,7 +168,7 @@ function calculatePricing(input: Record<string, any>): string {
     line_items,
     subtotal,
     tax_rate: rate,
-    tax_label: province === "Alberta" ? "GST (5%)" : `HST (${(rate * 100).toFixed(1)}%)`,
+    tax_label,
     tax_amount: Math.round(tax * 100) / 100,
     total: Math.round((subtotal + tax) * 100) / 100,
     province,

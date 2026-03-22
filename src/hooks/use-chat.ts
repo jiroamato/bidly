@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AgentId, ChatMessage } from "@/lib/types";
 
 export function useChat(agentId: AgentId) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const sendMessage = useCallback(
     async (content: string, profileContext?: string) => {
@@ -17,7 +20,7 @@ export function useChat(agentId: AgentId) {
         timestamp: Date.now(),
       };
 
-      const updatedMessages = [...messages, userMessage];
+      const updatedMessages = [...messagesRef.current, userMessage];
       setMessages(updatedMessages);
       setIsLoading(true);
 
@@ -50,7 +53,7 @@ export function useChat(agentId: AgentId) {
         setIsLoading(false);
       }
     },
-    [agentId, messages]
+    [agentId]
   );
 
   const addInitialMessage = useCallback((content: string) => {
