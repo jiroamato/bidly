@@ -16,12 +16,14 @@ export function ChatPanel({ agentId }: ChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const agent = getAgent(agentId);
 
-  // Auto-expand when first message arrives
+  // Auto-expand only when message count increases
+  const prevCountRef = useRef(0);
   useEffect(() => {
-    if (messages.length > 0 && !isExpanded) {
+    if (messages.length > prevCountRef.current) {
       setIsExpanded(true);
     }
-  }, [messages.length, isExpanded]);
+    prevCountRef.current = messages.length;
+  }, [messages.length]);
 
   // Auto-scroll to bottom of thread
   useEffect(() => {
