@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BidAI — Agentic UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f8f7f5;
+    --white: #ffffff;
+    --sidebar-bg: #fbfaf9;
+    --border: #e8e5e0;
+    --border-light: #f0ede8;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6560;
+    --text-muted: #a09a94;
+    --text-hint: #c4bfb8;
+    --accent-red: #c41e3a;
+    --agent-profile: #e67e22;
+    --agent-scout: #3b82f6;
+    --agent-analyst: #06b6d4;
+    --agent-compliance: #10b981;
+    --agent-writer: #8b5cf6;
+    --success: #1a7a4c;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --serif: 'DM Serif Display', serif;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .app {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .sidebar-brand {
+    padding: 24px 24px 32px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sidebar-brand .logo {
+    width: 28px;
+    height: 28px;
+    background: var(--text-primary);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-brand .logo svg {
+    width: 16px;
+    height: 16px;
+    fill: white;
+  }
+
+  .sidebar-brand span {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+  }
+
+  .sidebar-section {
+    margin-bottom: 28px;
+  }
+
+  .sidebar-section-header {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0 24px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar-section-header .icon {
+    font-size: 13px;
+    opacity: 0.6;
+  }
+
+  .sidebar-item {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 9px 24px 9px 28px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar-item:hover {
+    color: var(--text-primary);
+    background: var(--border-light);
+  }
+
+  .sidebar-item.active {
+    color: var(--text-primary);
+    font-weight: 600;
+    background: var(--white);
+  }
+
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+
+  .sidebar-item.active[data-agent="profile"]::before { background: var(--agent-profile); }
+  .sidebar-item.active[data-agent="scout"]::before { background: var(--agent-scout); }
+  .sidebar-item.active[data-agent="analyst"]::before { background: var(--agent-analyst); }
+  .sidebar-item.active[data-agent="compliance"]::before { background: var(--agent-compliance); }
+  .sidebar-item.active[data-agent="writer"]::before { background: var(--agent-writer); }
+
+  .sidebar-item.completed {
+    color: var(--success);
+  }
+
+  .sidebar-item.completed .check {
+    font-size: 11px;
+  }
+
+  .sidebar-item.locked {
+    color: var(--text-hint);
+    cursor: default;
+  }
+
+  .sidebar-item.locked:hover {
+    color: var(--text-hint);
+    background: transparent;
+  }
+
+  .sidebar-item .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .sidebar-item[data-agent="profile"] .dot { background: var(--agent-profile); }
+  .sidebar-item[data-agent="scout"] .dot { background: var(--agent-scout); }
+  .sidebar-item[data-agent="analyst"] .dot { background: var(--agent-analyst); }
+  .sidebar-item[data-agent="compliance"] .dot { background: var(--agent-compliance); }
+  .sidebar-item[data-agent="writer"] .dot { background: var(--agent-writer); }
+
+  .sidebar-item.locked .dot {
+    opacity: 0.25;
+  }
+
+  .sidebar-item .cursor-block {
+    display: none;
+    width: 8px;
+    height: 14px;
+    background: var(--text-primary);
+    animation: blink 1s step-end infinite;
+  }
+
+  .sidebar-item.active .cursor-block {
+    display: inline-block;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .sidebar-footer .company-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+  }
+
+  .sidebar-footer .company-detail {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .sidebar-footer .branding {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-hint);
+    letter-spacing: 0.5px;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .main-header {
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--white);
+  }
+
+  .breadcrumb {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .breadcrumb .sep {
+    margin: 0 6px;
+    color: var(--text-hint);
+  }
+
+  .breadcrumb .current {
+    color: var(--text-secondary);
+  }
+
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .main-content {
+    padding: 32px 40px;
+  }
+
+  .agent-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .agent-title-row h1 {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .agent-subtitle {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  .agent-subtitle .tender-id {
+    color: var(--agent-analyst);
+  }
+
+  /* Action buttons row */
+  .action-buttons {
+    display: flex;
+    gap: 12px;
+  }
+
+  .action-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-btn:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+  }
+
+  .action-btn.primary {
+    background: var(--text-primary);
+    color: var(--white);
+    border-color: var(--text-primary);
+  }
+
+  .action-btn.primary:hover {
+    background: #333;
+  }
+
+  .action-btn .arrow {
+    font-size: 14px;
+    font-weight: 300;
+  }
+
+  /* ── CARDS GRID ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 24px;
+  }
+
+  .info-card {
+    background: var(--white);
+    padding: 24px;
+  }
+
+  .info-card .card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .info-card .card-value {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+
+  .info-card .card-value.urgent {
+    color: var(--accent-red);
+    font-weight: 600;
+  }
+
+  .info-card .card-value .detail {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-weight: 400;
+  }
+
+  /* Wide card spanning full width */
+  .wide-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .wide-card .card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .risk-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .risk-item .risk-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .risk-item .risk-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.5;
+  }
+
+  .risk-item .risk-text .highlight {
+    color: var(--accent-red);
+    font-weight: 500;
+  }
+
+  /* Forms list */
+  .forms-list {
+    list-style: none;
+  }
+
+  .forms-list li {
+    font-size: 13px;
+    color: var(--text-primary);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .forms-list li:last-child {
+    border-bottom: none;
+  }
+
+  .forms-list .form-status {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    background: var(--border-light);
+    color: var(--text-muted);
+  }
+
+  .forms-list .form-status.required {
+    background: #fef3f2;
+    color: var(--accent-red);
+  }
+
+  /* Evaluation bars */
+  .eval-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .eval-row .eval-label {
+    font-size: 13px;
+    color: var(--text-primary);
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .eval-row .eval-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border-light);
+    position: relative;
+  }
+
+  .eval-row .eval-bar-fill {
+    height: 100%;
+    background: var(--text-primary);
+    transition: width 0.6s ease;
+  }
+
+  .eval-row .eval-pct {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    width: 40px;
+    text-align: right;
+  }
+
+  /* ── CHAT INPUT ── */
+  .chat-input-bar {
+    position: sticky;
+    bottom: 0;
+    padding: 16px 40px 24px;
+    background: linear-gradient(transparent, var(--bg) 20%);
+  }
+
+  .chat-input-wrap {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    background: var(--white);
+  }
+
+  .chat-input-agent {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--agent-analyst);
+    padding: 14px 16px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    background: var(--sidebar-bg);
+  }
+
+  .chat-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 14px 16px;
+    color: var(--text-primary);
+    background: transparent;
+  }
+
+  .chat-input::placeholder {
+    color: var(--text-hint);
+  }
+
+  .chat-send {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 14px 24px;
+    background: var(--text-primary);
+    color: var(--white);
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .chat-send:hover {
+    background: #333;
+  }
+
+  /* ── WORKFLOW PROGRESS (top bar) ── */
+  .workflow-bar {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+    background: var(--border);
+  }
+
+  .workflow-step {
+    flex: 1;
+    padding: 10px 16px;
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-hint);
+  }
+
+  .workflow-step + .workflow-step {
+    margin-left: 1px;
+  }
+
+  .workflow-step.complete {
+    color: var(--success);
+  }
+
+  .workflow-step.current {
+    color: var(--text-primary);
+    font-weight: 600;
+    border-bottom: 2px solid var(--agent-analyst);
+  }
+
+  .workflow-step .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .workflow-step.complete .step-dot { background: var(--success); }
+  .workflow-step.current .step-dot { background: var(--agent-analyst); }
+  .workflow-step .step-dot { background: var(--text-hint); }
+
+  /* scrollbar */
+  .main::-webkit-scrollbar { width: 6px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <span>BidAI</span>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="icon">&#9881;</span> Setup
+      </div>
+      <div class="sidebar-item completed" data-agent="profile">
+        <span class="check">&#10003;</span> Profile
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="icon">&#9670;</span> Research
+      </div>
+      <div class="sidebar-item completed" data-agent="scout">
+        <span class="check">&#10003;</span> Scout
+      </div>
+      <div class="sidebar-item active" data-agent="analyst">
+        <span class="dot"></span> Analyst <span class="cursor-block"></span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-header">
+        <span class="icon">&#9635;</span> Execute
+      </div>
+      <div class="sidebar-item locked" data-agent="compliance">
+        <span class="dot"></span> Compliance
+      </div>
+      <div class="sidebar-item locked" data-agent="writer">
+        <span class="dot"></span> Writer
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="company-name">Amato Plumbing Inc.</div>
+      <div class="company-detail">Ontario &bull; NAICS 238220</div>
+      <div class="branding">BidAI v1.0<br>&copy; 2026 Hackathon Build</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="main-header">
+      <div class="breadcrumb">
+        ANALYST<span class="sep">&bull;</span><span class="current">RFP Analysis</span>
+      </div>
+      <div class="user-badge">
+        <span>Demo Mode</span>
+        <div class="user-avatar">A</div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <!-- Workflow Progress Bar -->
+      <div class="workflow-bar">
+        <div class="workflow-step complete">
+          <span class="step-dot"></span> Profile
+        </div>
+        <div class="workflow-step complete">
+          <span class="step-dot"></span> Scout
+        </div>
+        <div class="workflow-step current">
+          <span class="step-dot"></span> Analyst
+        </div>
+        <div class="workflow-step">
+          <span class="step-dot"></span> Compliance
+        </div>
+        <div class="workflow-step">
+          <span class="step-dot"></span> Writer
+        </div>
+      </div>
+
+      <!-- Title Row -->
+      <div class="agent-title-row">
+        <div>
+          <h1>Water Main Replacement — City of Toronto</h1>
+          <div class="agent-subtitle">
+            Tender <span class="tender-id">PW-2026-0847</span> &bull; Match score: 94%
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="action-btn">View Original <span class="arrow">&#8599;</span></button>
+          <button class="action-btn">Download RFP <span class="arrow">&#8599;</span></button>
+          <button class="action-btn primary">Begin Compliance &#8594;</button>
+        </div>
+      </div>
+
+      <!-- Info Cards Grid -->
+      <div class="cards-grid">
+        <div class="info-card">
+          <div class="card-label">What They Want</div>
+          <div class="card-value">
+            Replace 2.4km of aging cast-iron water main with PVC along Dundas St W between Ossington and Dufferin. Includes excavation, pipe installation, service reconnections, road restoration, and traffic management.
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="card-label">Key Deadlines</div>
+          <div class="card-value urgent">
+            Closing: April 15, 2026 — 2:00 PM ET
+            <span class="detail">Mandatory site visit: April 2, 2026 at 10:00 AM</span>
+            <span class="detail">Questions deadline: April 8, 2026</span>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="card-label">Mandatory Forms</div>
+          <div class="card-value">
+            <ul class="forms-list">
+              <li><span class="form-status required">Required</span> Bid Bond (10% of bid price)</li>
+              <li><span class="form-status required">Required</span> WSIB Clearance Certificate</li>
+              <li><span class="form-status required">Required</span> Certificate of Insurance ($5M)</li>
+              <li><span class="form-status required">Required</span> Health & Safety Policy</li>
+              <li><span class="form-status required">Required</span> References (3 similar projects)</li>
+              <li><span class="form-status required">Required</span> Subcontractor Declaration</li>
+            </ul>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="card-label">Evaluation Criteria</div>
+          <div class="card-value">
+            <div class="eval-row">
+              <span class="eval-label">Technical</span>
+              <div class="eval-bar-track"><div class="eval-bar-fill" style="width:70%"></div></div>
+              <span class="eval-pct">70%</span>
+            </div>
+            <div class="eval-row">
+              <span class="eval-label">Price</span>
+              <div class="eval-bar-track"><div class="eval-bar-fill" style="width:30%"></div></div>
+              <span class="eval-pct">30%</span>
+            </div>
+            <div style="margin-top:12px; font-size:12px; color:var(--text-secondary);">
+              Minimum technical score: 70/100 to proceed to price evaluation
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Disqualification Risks -->
+      <div class="wide-card">
+        <div class="card-label">Disqualification Risks</div>
+        <div class="risk-item">
+          <span class="risk-icon">&#9888;</span>
+          <span class="risk-text"><span class="highlight">Mandatory site visit</span> — failure to attend the April 2 site visit will result in automatic disqualification. Register by March 30.</span>
+        </div>
+        <div class="risk-item">
+          <span class="risk-icon">&#9888;</span>
+          <span class="risk-text"><span class="highlight">Insurance minimum $5M</span> — your current profile shows $2M coverage. You'll need to increase or obtain a rider before submission.</span>
+        </div>
+        <div class="risk-item">
+          <span class="risk-icon">&#10003;</span>
+          <span class="risk-text">WSIB clearance — your profile shows active coverage. Confirm certificate is current as of submission date.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="chat-input-bar">
+      <div class="chat-input-wrap">
+        <div class="chat-input-agent">Analyst</div>
+        <input class="chat-input" type="text" placeholder="Ask about this RFP — requirements, risks, evaluation details...">
+        <button class="chat-send">Ask</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

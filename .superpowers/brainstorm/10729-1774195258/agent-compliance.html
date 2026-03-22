@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BidAI — Compliance Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f8f7f5; --white: #ffffff; --sidebar-bg: #fbfaf9;
+    --border: #e8e5e0; --border-light: #f0ede8;
+    --text-primary: #1a1a1a; --text-secondary: #6b6560;
+    --text-muted: #a09a94; --text-hint: #c4bfb8;
+    --accent-red: #c41e3a;
+    --agent-profile: #e67e22; --agent-scout: #3b82f6;
+    --agent-analyst: #06b6d4; --agent-compliance: #10b981;
+    --agent-writer: #8b5cf6; --success: #1a7a4c;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --serif: 'DM Serif Display', serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text-primary); height: 100vh; overflow: hidden; }
+  .app { display: flex; height: 100vh; }
+
+  .sidebar { width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-brand { padding: 24px 24px 32px; display: flex; align-items: center; gap: 10px; }
+  .sidebar-brand .logo { width: 28px; height: 28px; background: var(--text-primary); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .sidebar-brand .logo svg { width: 16px; height: 16px; fill: white; }
+  .sidebar-brand span { font-family: var(--mono); font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
+  .sidebar-section { margin-bottom: 28px; }
+  .sidebar-section-header { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); padding: 0 24px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .sidebar-section-header .icon { font-size: 13px; opacity: 0.6; }
+  .sidebar-item { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase; padding: 9px 24px 9px 28px; color: var(--text-secondary); cursor: pointer; position: relative; transition: color 0.15s, background 0.15s; display: flex; align-items: center; gap: 8px; }
+  .sidebar-item.active { color: var(--text-primary); font-weight: 600; background: var(--white); }
+  .sidebar-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--agent-compliance); }
+  .sidebar-item.completed { color: var(--success); }
+  .sidebar-item.locked { color: var(--text-hint); cursor: default; }
+  .sidebar-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sidebar-item[data-agent="profile"] .dot { background: var(--agent-profile); }
+  .sidebar-item[data-agent="scout"] .dot { background: var(--agent-scout); }
+  .sidebar-item[data-agent="analyst"] .dot { background: var(--agent-analyst); }
+  .sidebar-item[data-agent="compliance"] .dot { background: var(--agent-compliance); }
+  .sidebar-item[data-agent="writer"] .dot { background: var(--agent-writer); }
+  .sidebar-item.locked .dot { opacity: 0.25; }
+  .sidebar-item .cursor-block { display: none; width: 8px; height: 14px; background: var(--text-primary); animation: blink 1s step-end infinite; }
+  .sidebar-item.active .cursor-block { display: inline-block; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .sidebar-footer { margin-top: auto; padding: 20px 24px; border-top: 1px solid var(--border); }
+  .sidebar-footer .company-name { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--text-secondary); margin-bottom: 2px; }
+  .sidebar-footer .company-detail { font-family: var(--mono); font-size: 10px; color: var(--text-muted); }
+  .sidebar-footer .branding { margin-top: 16px; font-family: var(--mono); font-size: 9px; color: var(--text-hint); }
+
+  .main { flex: 1; overflow-y: auto; background: var(--bg); }
+  .main-header { padding: 20px 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--white); }
+  .breadcrumb { font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); }
+  .breadcrumb .sep { margin: 0 6px; color: var(--text-hint); }
+  .breadcrumb .current { color: var(--text-secondary); }
+
+  .main-content { padding: 32px 40px; }
+
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
+  .title-row h1 { font-family: var(--serif); font-size: 28px; font-weight: 400; margin-bottom: 4px; }
+  .title-row .subtitle { font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; }
+  .title-row .subtitle .tid { color: var(--agent-compliance); }
+
+  .action-buttons { display: flex; gap: 12px; }
+  .action-btn { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; padding: 10px 20px; border: 1px solid var(--border); background: var(--white); color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+  .action-btn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+  .action-btn.primary { background: var(--text-primary); color: var(--white); border-color: var(--text-primary); }
+
+  /* Overall result banner */
+  .result-banner { display: flex; gap: 1px; background: var(--border); margin-bottom: 28px; }
+  .result-card { background: var(--white); padding: 20px 24px; flex: 1; }
+  .result-card.pass { border-bottom: 3px solid var(--success); }
+  .result-card.warn { border-bottom: 3px solid var(--agent-profile); }
+  .result-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .result-value { font-size: 18px; font-weight: 600; }
+  .result-value.pass { color: var(--success); }
+  .result-value.warn { color: var(--agent-profile); }
+  .result-value.fail { color: var(--accent-red); }
+  .result-detail { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Checklist */
+  .checklist-section { background: var(--white); border: 1px solid var(--border); margin-bottom: 16px; }
+  .checklist-header { padding: 16px 24px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+  .checklist-title { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-primary); }
+  .checklist-count { font-family: var(--mono); font-size: 10px; color: var(--text-muted); }
+
+  .check-item { padding: 14px 24px; border-bottom: 1px solid var(--border-light); display: flex; align-items: flex-start; gap: 12px; }
+  .check-item:last-child { border-bottom: none; }
+
+  .check-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+  .check-icon.pass { background: #ecfdf5; color: var(--success); }
+  .check-icon.fail { background: #fef3f2; color: var(--accent-red); }
+  .check-icon.warn { background: #fffbeb; color: var(--agent-profile); }
+  .check-icon.pending { background: var(--border-light); color: var(--text-hint); }
+
+  .check-content { flex: 1; }
+  .check-name { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; }
+  .check-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .check-action { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--agent-compliance); cursor: pointer; margin-top: 6px; display: inline-block; }
+  .check-action:hover { text-decoration: underline; }
+
+  .check-status { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; padding: 4px 10px; flex-shrink: 0; margin-top: 2px; }
+  .check-status.pass { background: #ecfdf5; color: var(--success); }
+  .check-status.fail { background: #fef3f2; color: var(--accent-red); }
+  .check-status.warn { background: #fffbeb; color: var(--agent-profile); }
+
+  /* Chat */
+  .chat-input-bar { position: sticky; bottom: 0; padding: 16px 40px 24px; background: linear-gradient(transparent, var(--bg) 20%); }
+  .chat-input-wrap { display: flex; border: 1px solid var(--border); background: var(--white); }
+  .chat-input-agent { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--agent-compliance); padding: 14px 16px; border-right: 1px solid var(--border); background: var(--sidebar-bg); white-space: nowrap; }
+  .chat-input { flex: 1; border: none; outline: none; font-family: var(--sans); font-size: 14px; padding: 14px 16px; }
+  .chat-input::placeholder { color: var(--text-hint); }
+  .chat-send { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; padding: 14px 24px; background: var(--text-primary); color: var(--white); border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <span>BidAI</span>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-header"><span class="icon">&#9881;</span> Setup</div>
+      <div class="sidebar-item completed" data-agent="profile"><span style="font-size:11px;color:var(--success)">&#10003;</span> Profile</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-header"><span class="icon">&#9670;</span> Research</div>
+      <div class="sidebar-item completed" data-agent="scout"><span style="font-size:11px;color:var(--success)">&#10003;</span> Scout</div>
+      <div class="sidebar-item completed" data-agent="analyst"><span style="font-size:11px;color:var(--success)">&#10003;</span> Analyst</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-header"><span class="icon">&#9635;</span> Execute</div>
+      <div class="sidebar-item active" data-agent="compliance"><span class="dot"></span> Compliance <span class="cursor-block"></span></div>
+      <div class="sidebar-item locked" data-agent="writer"><span class="dot" style="opacity:0.25"></span> Writer</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="company-name">Amato Plumbing Inc.</div>
+      <div class="company-detail">Ontario &bull; NAICS 238220</div>
+      <div class="branding">BidAI v1.0<br>&copy; 2026 Hackathon Build</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="main-header">
+      <div class="breadcrumb">COMPLIANCE<span class="sep">&bull;</span><span class="current">Eligibility Check</span></div>
+    </div>
+
+    <div class="main-content">
+      <div class="title-row">
+        <div>
+          <h1>Eligibility Assessment</h1>
+          <div class="subtitle">Water Main Replacement — <span class="tid">PW-2026-0847</span></div>
+        </div>
+        <div class="action-buttons">
+          <button class="action-btn">Export Checklist</button>
+          <button class="action-btn primary">Begin Bid Draft &#8594;</button>
+        </div>
+      </div>
+
+      <!-- Result Banner -->
+      <div class="result-banner">
+        <div class="result-card pass">
+          <div class="result-label">Overall Eligibility</div>
+          <div class="result-value pass">Conditionally Eligible</div>
+          <div class="result-detail">2 items need attention before submission</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Requirements Met</div>
+          <div class="result-value">6 / 8</div>
+        </div>
+        <div class="result-card warn">
+          <div class="result-label">Action Required</div>
+          <div class="result-value warn">2</div>
+          <div class="result-detail">Insurance + site visit</div>
+        </div>
+      </div>
+
+      <!-- Buy Canadian -->
+      <div class="checklist-section">
+        <div class="checklist-header">
+          <div class="checklist-title">Buy Canadian Policy</div>
+          <div class="checklist-count">2 / 2 passed</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon pass">&#10003;</div>
+          <div class="check-content">
+            <div class="check-name">Canadian Business Registration</div>
+            <div class="check-desc">Company is registered in Ontario, Canada. Meets domestic supplier requirement.</div>
+          </div>
+          <div class="check-status pass">Verified</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon pass">&#10003;</div>
+          <div class="check-content">
+            <div class="check-name">Trade Agreement Compliance</div>
+            <div class="check-desc">This tender is under CFTA (Canadian Free Trade Agreement). No international trade agreement restrictions apply.</div>
+          </div>
+          <div class="check-status pass">Compliant</div>
+        </div>
+      </div>
+
+      <!-- Qualifications -->
+      <div class="checklist-section">
+        <div class="checklist-header">
+          <div class="checklist-title">Qualifications & Certifications</div>
+          <div class="checklist-count">2 / 3 passed</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon pass">&#10003;</div>
+          <div class="check-content">
+            <div class="check-name">WSIB Coverage</div>
+            <div class="check-desc">Active Workplace Safety and Insurance Board clearance on file.</div>
+          </div>
+          <div class="check-status pass">Active</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon fail">!</div>
+          <div class="check-content">
+            <div class="check-name">Liability Insurance — Minimum $5,000,000</div>
+            <div class="check-desc">Your profile shows $2,000,000 coverage. This tender requires $5M minimum. You'll need to contact your insurer for a rider or increase.</div>
+            <div class="check-action">How do I increase my coverage? &#8594;</div>
+          </div>
+          <div class="check-status fail">Insufficient</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon pass">&#10003;</div>
+          <div class="check-content">
+            <div class="check-name">Relevant Experience (3 similar projects)</div>
+            <div class="check-desc">Your profile lists water main and sewer work. Prepare 3 project references with completion dates and contract values.</div>
+          </div>
+          <div class="check-status pass">Qualifies</div>
+        </div>
+      </div>
+
+      <!-- Mandatory Steps -->
+      <div class="checklist-section">
+        <div class="checklist-header">
+          <div class="checklist-title">Mandatory Participation</div>
+          <div class="checklist-count">1 / 2 passed</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon warn">!</div>
+          <div class="check-content">
+            <div class="check-name">Mandatory Site Visit — April 2, 2026 at 10:00 AM</div>
+            <div class="check-desc">You must attend or your bid will be disqualified. Registration deadline is March 30. Location: 1530 Dundas St W, Toronto.</div>
+            <div class="check-action">Help me register for the site visit &#8594;</div>
+          </div>
+          <div class="check-status warn">Not Registered</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon pass">&#10003;</div>
+          <div class="check-content">
+            <div class="check-name">Bid Bond (10% of bid price)</div>
+            <div class="check-desc">Your bonding capacity covers this requirement. Arrange with your surety company before submission.</div>
+          </div>
+          <div class="check-status pass">Bondable</div>
+        </div>
+      </div>
+
+      <!-- Documentation -->
+      <div class="checklist-section">
+        <div class="checklist-header">
+          <div class="checklist-title">Required Documentation</div>
+          <div class="checklist-count">Checklist for submission</div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon pending">&#8226;</div>
+          <div class="check-content">
+            <div class="check-name">Health & Safety Policy</div>
+            <div class="check-desc">Submit your company's OH&S policy document. Must include site-specific hazard assessment procedures.</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon pending">&#8226;</div>
+          <div class="check-content">
+            <div class="check-name">Subcontractor Declaration</div>
+            <div class="check-desc">List all subcontractors you plan to use, with their qualifications and scope of work.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-bar">
+      <div class="chat-input-wrap">
+        <div class="chat-input-agent">Compliance</div>
+        <input class="chat-input" type="text" placeholder="Ask about requirements — 'what insurance do I need?' or 'explain Buy Canadian policy'">
+        <button class="chat-send">Ask</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
