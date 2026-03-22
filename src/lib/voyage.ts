@@ -2,8 +2,13 @@ const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings";
 
 export async function getEmbeddings(
   texts: string[],
-  model: string = "voyage-3-lite"
+  model: string = "voyage-3-lite",
+  inputType?: "document" | "query"
 ): Promise<number[][]> {
+  if (!process.env.VOYAGE_API_KEY) {
+    throw new Error("VOYAGE_API_KEY environment variable is not set");
+  }
+
   const response = await fetch(VOYAGE_API_URL, {
     method: "POST",
     headers: {
@@ -13,6 +18,7 @@ export async function getEmbeddings(
     body: JSON.stringify({
       input: texts,
       model,
+      ...(inputType && { input_type: inputType }),
     }),
   });
 
