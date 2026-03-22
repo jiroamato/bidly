@@ -172,7 +172,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
             </button>
           </div>
         </div>
-        <ChatPanel agentId="analyst" />
+        <ChatPanel agentId="analyst" selectedTender={agent.selectedTender} profile={agent.profile} />
       </div>
     );
   }
@@ -361,7 +361,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
       </div>
       </div>
 
-      <ChatPanel agentId="analyst" />
+      <ChatPanel agentId="analyst" selectedTender={agent.selectedTender} profile={agent.profile} />
     </div>
   );
 }
