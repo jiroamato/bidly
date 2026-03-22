@@ -9,14 +9,21 @@ const supabase = createClient(
 const BATCH_SIZE = 20; // Voyage free tier: max ~128 texts per call, keep small
 
 async function main() {
+  // Get IDs of tenders that already have embeddings
+  const { data: existing } = await supabase
+    .from("tender_embeddings")
+    .select("tender_id");
+  const embeddedIds = new Set((existing || []).map((e) => e.tender_id));
+
   // Get tenders that don't have embeddings yet
-  const { data: tenders, error } = await supabase
+  const { data: allTenders, error } = await supabase
     .from("tenders")
     .select("id, title, description")
     .order("id");
 
   if (error) throw error;
-  console.log(`Found ${tenders.length} tenders to embed`);
+  const tenders = allTenders.filter((t) => !embeddedIds.has(t.id));
+  console.log(`Found ${allTenders.length} tenders, ${tenders.length} need embedding (${embeddedIds.size} already done)`);
 
   let embedded = 0;
   for (let i = 0; i < tenders.length; i += BATCH_SIZE) {
@@ -26,7 +33,7 @@ async function main() {
     );
 
     try {
-      const embeddings = await getEmbeddings(texts);
+      const embeddings = await getEmbeddings(texts, "voyage-3-lite", "document");
 
       const rows = batch.map((t, idx) => ({
         tender_id: t.id,
