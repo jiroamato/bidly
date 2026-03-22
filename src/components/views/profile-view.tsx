@@ -201,7 +201,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
             style={{ background: "var(--border-light)" }}
           >
             <div
-              className="h-full transition-all duration-600"
+              className="h-full transition-all duration-[600ms]"
               style={{ width: `${progressPct}%`, background: "var(--agent-profile)" }}
             />
           </div>

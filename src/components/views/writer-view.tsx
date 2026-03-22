@@ -77,9 +77,8 @@ export function WriterView({ agent }: WriterViewProps) {
   const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
   const content = MOCK_CONTENT[activeSection];
   const sectionConfig = SECTIONS.find((s) => s.id === activeSection)!;
-  // Used when AI integration is wired (Person 3)
-  void agent.selectedTender;
-  void agent.profile;
+  const _tender = agent.selectedTender;
+  const _profile = agent.profile;
 
   const subtotal = content?.pricing?.items.reduce((a, i) => a + i.amount, 0) || 0;
   const hstRate = 0.13; // Ontario HST

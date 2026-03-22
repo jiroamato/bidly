@@ -139,7 +139,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
           {[
             { label: "Total Matches", value: MOCK_TENDERS.length.toString(), color: "var(--agent-scout)", detail: "from 312 open tenders" },
             { label: "High Match (>80%)", value: highMatch.toString(), color: "var(--text-primary)" },
-            { label: "Closing This Week", value: closingSoon.toString(), color: "var(--accent-red)" },
+            { label: "Closing Soon", value: closingSoon.toString(), color: "var(--accent-red)" },
             { label: "Avg Match Score", value: `${avgScore}%`, color: "var(--text-primary)" },
           ].map((stat) => (
             <div

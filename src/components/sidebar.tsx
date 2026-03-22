@@ -29,8 +29,10 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
           className="w-7 h-7 rounded-md flex items-center justify-center"
           style={{ background: "var(--text-primary)" }}
         >
-          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" fill="white" stroke="none" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
           </svg>
         </div>
         <span
@@ -90,12 +92,13 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
 
                   {/* Status indicator */}
                   {isCompleted ? (
-                    <span className="text-[11px]" style={{ color: "var(--success)" }}>
+                    <span className="text-[11px]" style={{ color: "var(--success)" }} aria-label="Completed">
                       &#10003;
                     </span>
                   ) : (
                     <span
                       className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+                      aria-label={isLocked ? "Locked" : "Active"}
                       style={{
                         background: agent.color,
                         opacity: isLocked ? 0.25 : 1,
