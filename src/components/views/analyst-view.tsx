@@ -1,20 +1,10 @@
 "use client";
 
 import { ChatInput } from "@/components/chat-input";
+import { AgentState } from "@/hooks/use-agent";
 
 interface AnalystViewProps {
-  agent: {
-    selectedTender: {
-      id: number;
-      title: string;
-      reference_number: string;
-      closing_date: string;
-      contracting_entity: string;
-      description: string;
-    } | null;
-    completeAgent: (id: "analyst") => void;
-    setActiveAgent: (id: "compliance") => void;
-  };
+  agent: AgentState;
 }
 
 const MOCK_ANALYSIS = {

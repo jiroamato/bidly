@@ -3,14 +3,10 @@
 import { useState } from "react";
 import { Tender } from "@/lib/types";
 import { ChatInput } from "@/components/chat-input";
+import { AgentState } from "@/hooks/use-agent";
 
 interface ScoutViewProps {
-  agent: {
-    profile: { company_name: string; province: string; capabilities: string } | null;
-    setSelectedTender: (t: Tender) => void;
-    completeAgent: (id: "scout") => void;
-    setActiveAgent: (id: "analyst") => void;
-  };
+  agent: AgentState;
 }
 
 const MOCK_TENDERS: (Tender & { match_score: number })[] = [

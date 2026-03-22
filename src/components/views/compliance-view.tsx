@@ -1,13 +1,10 @@
 "use client";
 
 import { ChatInput } from "@/components/chat-input";
+import { AgentState } from "@/hooks/use-agent";
 
 interface ComplianceViewProps {
-  agent: {
-    selectedTender: { title: string; reference_number: string } | null;
-    completeAgent: (id: "compliance") => void;
-    setActiveAgent: (id: "writer") => void;
-  };
+  agent: AgentState;
 }
 
 type CheckStatus = "pass" | "fail" | "warn" | "pending";

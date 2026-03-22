@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { ChatInput } from "@/components/chat-input";
+import { AgentState } from "@/hooks/use-agent";
 
 interface WriterViewProps {
-  agent: {
-    selectedTender: { title: string; reference_number: string } | null;
-    profile: { company_name: string } | null;
-  };
+  agent: AgentState;
 }
 
 type SectionId = "exec_summary" | "technical" | "team" | "project_mgmt" | "safety" | "pricing" | "forms" | "preview";

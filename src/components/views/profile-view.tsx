@@ -3,13 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
+import { AgentState } from "@/hooks/use-agent";
 
 interface ProfileViewProps {
-  agent: {
-    completeAgent: (id: "profile") => void;
-    setProfile: (p: BusinessProfile) => void;
-    setActiveAgent: (id: "scout") => void;
-  };
+  agent: AgentState;
 }
 
 const QUESTIONS = [
