@@ -29,7 +29,11 @@ export function ChatInput({ agentId, onSend, disabled }: ChatInputProps) {
     >
       <div
         className="flex border"
-        style={{ borderColor: "var(--bidly-border)", background: "var(--white)" }}
+        style={{
+          borderColor: "var(--bidly-border)",
+          background: "var(--white)",
+          opacity: disabled ? 0.5 : 1,
+        }}
       >
         <div
           className="px-4 py-3.5 border-r text-[10px] tracking-[1.5px] uppercase whitespace-nowrap flex items-center"

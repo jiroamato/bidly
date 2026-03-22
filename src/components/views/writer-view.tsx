@@ -343,7 +343,7 @@ export function WriterView({ agent }: WriterViewProps) {
 
         {/* Chat Input */}
         <div className="flex-shrink-0">
-          <ChatInput agentId="writer" onSend={() => {}} />
+          <ChatInput agentId="writer" onSend={() => {}} disabled />
         </div>
       </div>
     </div>

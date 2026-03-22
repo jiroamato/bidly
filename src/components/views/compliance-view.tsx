@@ -239,7 +239,7 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
         })}
       </div>
 
-      <ChatInput agentId="compliance" onSend={() => {}} />
+      <ChatInput agentId="compliance" onSend={() => {}} disabled />
     </div>
   );
 }

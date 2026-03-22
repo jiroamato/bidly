@@ -240,7 +240,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
         </div>
       </div>
 
-      <ChatInput agentId="analyst" onSend={() => {}} />
+      <ChatInput agentId="analyst" onSend={() => {}} disabled />
     </div>
   );
 }

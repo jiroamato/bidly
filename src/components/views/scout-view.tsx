@@ -265,7 +265,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
       </div>
 
       {/* Chat Input */}
-      <ChatInput agentId="scout" onSend={() => {}} />
+      <ChatInput agentId="scout" onSend={() => {}} disabled />
     </div>
   );
 }
