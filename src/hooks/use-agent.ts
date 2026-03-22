@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { AgentId, AgentStatus, BusinessProfile, Tender } from "@/lib/types";
 import { AGENT_ORDER } from "@/lib/agents";
 
-interface AgentState {
+export interface AgentState {
   activeAgent: AgentId;
   statuses: Record<AgentId, AgentStatus>;
   profile: BusinessProfile | null;
@@ -29,17 +29,17 @@ export function useAgent(): AgentState {
 
   const setActiveAgent = useCallback(
     (id: AgentId) => {
-      if (statuses[id] === "locked") return;
-      setActiveAgentRaw(id);
       setStatuses((prev) => {
+        if (prev[id] === "locked") return prev;
         const next = { ...prev };
         if (next[id] !== "completed") {
           next[id] = "active";
         }
         return next;
       });
+      setActiveAgentRaw(id);
     },
-    [statuses]
+    []
   );
 
   const completeAgent = useCallback((id: AgentId) => {
