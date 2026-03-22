@@ -223,9 +223,10 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
           body: JSON.stringify({
             agentId: "compliance",
             messages: updated,
-            profileContext: profile
-              ? `Company: ${profile.company_name}, Province: ${profile.province}, Capabilities: ${profile.capabilities}`
-              : undefined,
+            profileContext: [
+              profile && `Company: ${profile.company_name} | Location: ${profile.location || profile.province} | Services: ${profile.capabilities} | Keywords: ${profile.keywords.join(", ")}`,
+              tender && `Selected Contract: "${tender.title}" | Ref: ${tender.reference_number} | Entity: ${tender.contracting_entity} | Closes: ${tender.closing_date} | Regions: ${tender.regions_of_delivery.join(", ")} | Description: ${tender.description}`,
+            ].filter(Boolean).join("\n\n") || undefined,
           }),
         });
 
