@@ -60,6 +60,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
   const [demoMode, setDemoMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const demoModeRef = useRef(false);
+  const lastDemoStep = useRef(-1);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -141,6 +142,8 @@ export function ProfileView({ agent }: ProfileViewProps) {
   // Demo auto-fill: advance one answer each time step changes
   useEffect(() => {
     if (!demoMode || isComplete) return;
+    if (lastDemoStep.current >= step) return;
+    lastDemoStep.current = step;
     const timer = setTimeout(() => {
       handleSend(DEMO_ANSWERS[step]);
     }, 800);
@@ -255,7 +258,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
           ))}
 
           {/* Profile Card — animated in after completion */}
-          {showProfile && (
+          {showProfile && agent.profile && (
             <div style={{ animation: "profileReveal 0.6s ease-out forwards" }}>
               <div
                 className="border p-6 mt-4"
@@ -266,7 +269,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
                 }}
               >
                 <div
-                  className="text-[10px] font-medium tracking-[2px] uppercase mb-4"
+                  className="text-[10px] font-medium tracking-[2px] uppercase mb-5"
                   style={{
                     fontFamily: "var(--font-mono)",
                     color: "var(--agent-profile)",
@@ -275,42 +278,32 @@ export function ProfileView({ agent }: ProfileViewProps) {
                   Business Profile
                 </div>
 
-                <div className="mb-4">
+                {/* Company name + location row */}
+                <div className="mb-5">
                   <div
-                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    Company
-                  </div>
-                  <div
-                    className="text-lg font-medium"
+                    className="text-xl font-medium mb-1"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {answers[0]}
+                    {agent.profile.company_name}
                   </div>
-                </div>
-
-                <div className="mb-4">
                   <div
-                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--text-muted)",
-                    }}
+                    className="text-sm"
+                    style={{ color: "var(--text-secondary)" }}
                   >
-                    Province
-                  </div>
-                  <div className="text-sm" style={{ color: "var(--text-primary)" }}>
-                    {answers[1]}
+                    {agent.profile.location || agent.profile.province}
                   </div>
                 </div>
 
-                <div className="mb-4">
+                {/* Divider */}
+                <div
+                  className="mb-5"
+                  style={{ borderBottom: "1px solid var(--border-light)" }}
+                />
+
+                {/* Capabilities */}
+                <div className="mb-5">
                   <div
-                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
+                    className="text-[10px] tracking-[1.5px] uppercase mb-2"
                     style={{
                       fontFamily: "var(--font-mono)",
                       color: "var(--text-muted)",
@@ -322,27 +315,88 @@ export function ProfileView({ agent }: ProfileViewProps) {
                     className="text-sm leading-relaxed"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    {answers[2]}
+                    {agent.profile.capabilities}
                   </div>
                 </div>
 
-                <div>
-                  <div
-                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    Scale & Certifications
-                  </div>
-                  <div
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {answers[3]}
+                {/* NAICS + Province row */}
+                <div className="flex gap-8 mb-5">
+                  {agent.profile.naics_codes.length > 0 && (
+                    <div>
+                      <div
+                        className="text-[10px] tracking-[1.5px] uppercase mb-2"
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        NAICS Codes
+                      </div>
+                      <div className="flex gap-2">
+                        {agent.profile.naics_codes.map((code) => (
+                          <span
+                            key={code}
+                            className="text-xs px-2.5 py-1"
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              background: "var(--bg)",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {code}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <div
+                      className="text-[10px] tracking-[1.5px] uppercase mb-2"
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        color: "var(--text-muted)",
+                      }}
+                    >
+                      Province
+                    </div>
+                    <div
+                      className="text-sm"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {agent.profile.province}
+                    </div>
                   </div>
                 </div>
+
+                {/* Keywords */}
+                {agent.profile.keywords.length > 0 && (
+                  <div>
+                    <div
+                      className="text-[10px] tracking-[1.5px] uppercase mb-2"
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        color: "var(--text-muted)",
+                      }}
+                    >
+                      Keywords
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {agent.profile.keywords.map((kw) => (
+                        <span
+                          key={kw}
+                          className="text-[11px] px-2.5 py-1 border"
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            borderColor: "var(--bidly-border)",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
