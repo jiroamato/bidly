@@ -19,6 +19,13 @@
 - Windows: use Git Bash (already configured). Forward slashes in paths. `npm`/`npx` work the same.
 - All team members: Node.js 20+, npm, Git. VS Code recommended.
 
+**Testing (MANDATORY):**
+- **TDD is required for all tasks.** Write tests before implementation code. Use the `superpowers:test-driven-development` skill to guide the process.
+- Test framework: Vitest (`npm test` to run, `npm run test:watch` for watch mode)
+- Tests live in `tests/` directory, named `<module>.test.ts`
+- Extract logic into importable utility modules (e.g., `src/lib/`) so tests can import them directly
+- Every PR must include tests for new logic. No exceptions.
+
 ---
 
 ## Development Environment Setup (All 4 People, First 10 Minutes)
