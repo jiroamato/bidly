@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { AgentState } from "@/hooks/use-agent";
 import { useChat } from "@/hooks/use-chat";
@@ -8,41 +9,52 @@ interface AnalystViewProps {
   agent: AgentState;
 }
 
-const MOCK_ANALYSIS = {
-  whatTheyWant: [
-    "Replace 2.4 km of aging water mains along Dundas Street West",
-    "Full excavation, pipe installation (300mm ductile iron), and road restoration",
-    "Service reconnections for 180+ residential and commercial properties",
-    "Traffic management plan for major arterial road",
-  ],
-  deadlines: [
-    { label: "Submission Deadline", value: "April 15, 2026 — 2:00 PM EST", urgent: true },
-    { label: "Mandatory Site Visit", value: "March 28, 2026 — 10:00 AM", urgent: true },
-    { label: "Questions Due", value: "April 1, 2026", urgent: false },
-    { label: "Contract Start", value: "May 15, 2026", urgent: false },
-  ],
-  forms: [
-    "Bid Bond (10% of bid price)",
-    "WSIB Clearance Certificate",
-    "Certificate of Insurance ($5M minimum)",
-    "Ontario Health & Safety Policy",
-    "List of Subcontractors",
-  ],
-  evaluation: [
-    { criteria: "Technical Approach", weight: "70%" },
-    { criteria: "Price", weight: "20%" },
-    { criteria: "Past Experience", weight: "10%" },
-  ],
-  risks: [
-    { level: "high", text: "Mandatory site visit on March 28 — missing it disqualifies your bid" },
-    { level: "medium", text: "Insurance requirement is $5M — verify your current coverage meets this threshold" },
-    { level: "low", text: "Subcontractor list required — ensure all subs are confirmed before submission" },
-  ],
-};
+interface TenderAnalysis {
+  whatTheyWant: string[];
+  deadlines: { label: string; value: string; urgent: boolean }[];
+  forms: string[];
+  evaluation: { criteria: string; weight: string }[];
+  risks: { level: "high" | "medium" | "low"; text: string }[];
+}
 
 export function AnalystView({ agent }: AnalystViewProps) {
   const { sendMessage } = useChat("analyst");
   const tender = agent.selectedTender;
+  const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tender) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setAnalysis(null);
+
+    fetch("/api/analyze-tender", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tender }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) setAnalysis(data.analysis);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tender?.id]);
 
   if (!tender) {
     return (
@@ -61,6 +73,113 @@ export function AnalystView({ agent }: AnalystViewProps) {
     agent.completeAgent("analyst");
     agent.setActiveAgent("compliance");
   };
+
+  if (loading) {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-10 py-8">
+          {/* Title Row */}
+          <div className="flex items-start justify-between mb-8">
+            <div>
+              <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 400 }}>
+                {tender.title}
+              </h1>
+              <div
+                className="mt-1 text-[13px] flex items-center gap-3"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <span
+                  className="text-[11px] tracking-[0.8px]"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--agent-analyst)" }}
+                >
+                  {tender.reference_number}
+                </span>
+                <span>{tender.contracting_entity}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Loading skeleton */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="border p-5 animate-pulse"
+                style={{ background: "var(--white)", borderColor: "var(--bidly-border)" }}
+              >
+                <div className="h-3 w-28 mb-4 rounded" style={{ background: "var(--border-light)" }} />
+                <div className="space-y-2">
+                  <div className="h-3 w-full rounded" style={{ background: "var(--border-light)" }} />
+                  <div className="h-3 w-4/5 rounded" style={{ background: "var(--border-light)" }} />
+                  <div className="h-3 w-3/5 rounded" style={{ background: "var(--border-light)" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div
+            className="border p-5 animate-pulse"
+            style={{ background: "var(--white)", borderColor: "var(--bidly-border)" }}
+          >
+            <div className="h-3 w-36 mb-4 rounded" style={{ background: "var(--border-light)" }} />
+            <div className="space-y-2">
+              <div className="h-3 w-full rounded" style={{ background: "var(--border-light)" }} />
+              <div className="h-3 w-3/4 rounded" style={{ background: "var(--border-light)" }} />
+            </div>
+          </div>
+          <p className="mt-6 text-center text-[13px]" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+            Analyzing tender...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-10 py-8">
+          <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 400 }}>
+            {tender.title}
+          </h1>
+          <div className="mt-6 border p-5" style={{ background: "#fef3f2", borderColor: "var(--accent-red)" }}>
+            <p className="text-[13px]" style={{ color: "var(--accent-red)" }}>
+              Failed to analyze tender: {error}
+            </p>
+            <button
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetch("/api/analyze-tender", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tender }),
+                })
+                  .then((res) => {
+                    if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
+                    return res.json();
+                  })
+                  .then((data) => setAnalysis(data.analysis))
+                  .catch((err) => setError(err.message))
+                  .finally(() => setLoading(false));
+              }}
+              className="mt-3 px-4 py-2 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer"
+              style={{
+                fontFamily: "var(--font-mono)",
+                background: "var(--agent-analyst)",
+                color: "var(--white)",
+                border: "none",
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+        <ChatInput agentId="analyst" onSend={sendMessage} />
+      </div>
+    );
+  }
+
+  if (!analysis) return null;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -112,7 +231,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
               What They Want
             </div>
             <ul className="space-y-2">
-              {MOCK_ANALYSIS.whatTheyWant.map((item, i) => (
+              {analysis.whatTheyWant.map((item, i) => (
                 <li key={i} className="text-[13px] leading-relaxed flex gap-2" style={{ color: "var(--text-secondary)" }}>
                   <span style={{ color: "var(--agent-analyst)" }}>&bull;</span>
                   {item}
@@ -133,7 +252,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
               Key Deadlines
             </div>
             <div className="space-y-3">
-              {MOCK_ANALYSIS.deadlines.map((d, i) => (
+              {analysis.deadlines.map((d, i) => (
                 <div key={i} className="flex justify-between items-baseline">
                   <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>{d.label}</span>
                   <span
@@ -162,7 +281,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
               Mandatory Forms
             </div>
             <ul className="space-y-2">
-              {MOCK_ANALYSIS.forms.map((form, i) => (
+              {analysis.forms.map((form, i) => (
                 <li key={i} className="text-[13px] flex gap-2" style={{ color: "var(--text-secondary)" }}>
                   <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{i + 1}.</span>
                   {form}
@@ -183,7 +302,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
               Evaluation Criteria
             </div>
             <div className="space-y-3">
-              {MOCK_ANALYSIS.evaluation.map((ev, i) => (
+              {analysis.evaluation.map((ev, i) => (
                 <div key={i}>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>{ev.criteria}</span>
@@ -221,7 +340,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
             Disqualification Risks
           </div>
           <div className="space-y-3">
-            {MOCK_ANALYSIS.risks.map((risk, i) => (
+            {analysis.risks.map((risk, i) => (
               <div key={i} className="flex items-start gap-3">
                 <span
                   className="text-[9px] tracking-[1px] uppercase px-2.5 py-1 flex-shrink-0 mt-0.5"
