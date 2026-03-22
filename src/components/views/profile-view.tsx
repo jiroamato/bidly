@@ -63,6 +63,35 @@ const DEMO_PROFILE_PAYLOAD = {
   ],
 };
 
+/* ---------- PARSE CAPABILITIES INTO SECTIONS ---------- */
+
+function parseCapabilities(text: string) {
+  const sentences = text
+    .split(/\.\s+/)
+    .map((s) => s.replace(/\.$/, "").trim())
+    .filter(Boolean);
+
+  const services: string[] = [];
+  const experience: string[] = [];
+  const certifications: string[] = [];
+  const contractRange: string[] = [];
+
+  for (const s of sentences) {
+    const lower = s.toLowerCase();
+    if (/\$[\d,]+k?|\bcontract|\bbudget|\bproject size/i.test(lower)) {
+      contractRange.push(s);
+    } else if (/certif|bonded|bonding|insur|wsib|liability|licensed/i.test(lower)) {
+      certifications.push(s);
+    } else if (/experience|government|federal|municipal|provincial|rcmp|client/i.test(lower)) {
+      experience.push(s);
+    } else {
+      services.push(s);
+    }
+  }
+
+  return { services, experience, certifications, contractRange };
+}
+
 /* ---------- COMPONENT ---------- */
 
 export function ProfileView({ agent }: ProfileViewProps) {
@@ -548,74 +577,108 @@ export function ProfileView({ agent }: ProfileViewProps) {
                     style={{ borderBottom: "1px solid var(--border-light)" }}
                   />
 
-                  <div className="grid grid-cols-[1fr_200px] gap-8">
-                    <div>
+                  {(() => {
+                    const parsed = parseCapabilities(agent.profile.capabilities);
+                    const SectionLabel = ({ children }: { children: React.ReactNode }) => (
                       <div
-                        className="text-[9px] tracking-[2px] uppercase mb-3"
+                        className="text-[9px] tracking-[2px] uppercase mb-2"
                         style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
                       >
-                        Services & Capabilities
+                        {children}
                       </div>
-                      <div
-                        className="text-[14px] leading-[1.8]"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {agent.profile.capabilities}
-                      </div>
-                    </div>
-
-                    <div
-                      className="pl-8"
-                      style={{ borderLeft: "1px solid var(--border-light)" }}
-                    >
-                      <div className="mb-5">
-                        <div
-                          className="text-[9px] tracking-[2px] uppercase mb-2"
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            color: "var(--text-muted)",
-                          }}
-                        >
-                          Province
-                        </div>
-                        <div
-                          className="text-sm font-medium"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {agent.profile.province}
-                        </div>
-                      </div>
-
-                      {agent.profile.keywords.length > 0 && (
-                        <div>
-                          <div
-                            className="text-[9px] tracking-[2px] uppercase mb-2"
-                            style={{
-                              fontFamily: "var(--font-mono)",
-                              color: "var(--text-muted)",
-                            }}
-                          >
-                            Keywords
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {agent.profile.keywords.map((kw) => (
-                              <span
-                                key={kw}
-                                className="text-[10px] px-2 py-0.5"
-                                style={{
-                                  fontFamily: "var(--font-mono)",
-                                  background: "var(--bg)",
-                                  color: "var(--text-secondary)",
-                                }}
+                    );
+                    return (
+                      <div className="grid grid-cols-[1fr_220px] gap-8">
+                        {/* Left column */}
+                        <div className="space-y-5">
+                          {parsed.services.length > 0 && (
+                            <div>
+                              <SectionLabel>Core Services</SectionLabel>
+                              <div
+                                className="text-[14px] leading-[1.8]"
+                                style={{ color: "var(--text-primary)" }}
                               >
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
+                                {parsed.services.join(". ")}.
+                              </div>
+                            </div>
+                          )}
+
+                          {parsed.experience.length > 0 && (
+                            <div>
+                              <SectionLabel>Experience</SectionLabel>
+                              <div
+                                className="text-[14px] leading-[1.8]"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {parsed.experience.join(". ")}.
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
+
+                        {/* Right column */}
+                        <div
+                          className="pl-8 space-y-5"
+                          style={{ borderLeft: "1px solid var(--border-light)" }}
+                        >
+                          <div>
+                            <SectionLabel>Province</SectionLabel>
+                            <div
+                              className="text-sm font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {agent.profile.province}
+                            </div>
+                          </div>
+
+                          {parsed.contractRange.length > 0 && (
+                            <div>
+                              <SectionLabel>Contract Range</SectionLabel>
+                              <div
+                                className="text-sm"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {parsed.contractRange.join(". ")}.
+                              </div>
+                            </div>
+                          )}
+
+                          {parsed.certifications.length > 0 && (
+                            <div>
+                              <SectionLabel>Certifications</SectionLabel>
+                              <div
+                                className="text-sm leading-relaxed"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {parsed.certifications.join(". ")}.
+                              </div>
+                            </div>
+                          )}
+
+                          {agent.profile.keywords.length > 0 && (
+                            <div>
+                              <SectionLabel>Keywords</SectionLabel>
+                              <div className="flex flex-wrap gap-1.5">
+                                {agent.profile.keywords.map((kw) => (
+                                  <span
+                                    key={kw}
+                                    className="text-[10px] px-2 py-0.5"
+                                    style={{
+                                      fontFamily: "var(--font-mono)",
+                                      background: "var(--bg)",
+                                      color: "var(--text-secondary)",
+                                    }}
+                                  >
+                                    {kw}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
