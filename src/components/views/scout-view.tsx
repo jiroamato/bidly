@@ -22,11 +22,18 @@ export function ScoutView({ agent }: ScoutViewProps) {
     fetch("/api/tenders?limit=50")
       .then((r) => r.json())
       .then((data: Tender[]) => {
-        // Add match_score (placeholder until AI search is wired)
-        const scored = data.map((t, i) => ({
-          ...t,
-          match_score: Math.max(95 - i * 5, 40),
-        }));
+        // Score tenders by keyword relevance to demo profile
+        const BOOST_KEYWORDS = [
+          "rcmp", "janitorial", "cleaning", "custodial", "facility",
+          "maintenance", "housekeeping", "sanitation", "detachment",
+        ];
+        const scored = data.map((t) => {
+          const text = `${t.title} ${t.description} ${t.contracting_entity}`.toLowerCase();
+          const hits = BOOST_KEYWORDS.filter((kw) => text.includes(kw)).length;
+          const score = hits >= 2 ? 97 : hits === 1 ? 88 : Math.floor(40 + Math.random() * 30);
+          return { ...t, match_score: score };
+        });
+        scored.sort((a, b) => b.match_score - a.match_score);
         setTenders(scored);
       })
       .catch(console.error)
