@@ -255,7 +255,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
       </div>
 
       {/* Chat Panel */}
-      <ChatPanel agentId="scout" />
+      <ChatPanel agentId="scout" selectedTender={agent.selectedTender} profile={agent.profile} />
     </div>
   );
 }
