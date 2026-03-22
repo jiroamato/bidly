@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChatInput } from "@/components/chat-input";
+import { ChatPanel } from "@/components/chat-panel";
 import { AgentState } from "@/hooks/use-agent";
-import { useChat } from "@/hooks/use-chat";
 
 interface AnalystViewProps {
   agent: AgentState;
@@ -18,7 +17,6 @@ interface TenderAnalysis {
 }
 
 export function AnalystView({ agent }: AnalystViewProps) {
-  const { sendMessage } = useChat("analyst");
   const tender = agent.selectedTender;
   const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -174,7 +172,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
             </button>
           </div>
         </div>
-        <ChatInput agentId="analyst" onSend={sendMessage} />
+        <ChatPanel agentId="analyst" />
       </div>
     );
   }
@@ -182,7 +180,8 @@ export function AnalystView({ agent }: AnalystViewProps) {
   if (!analysis) return null;
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col flex-1 h-full">
+      <div className="flex-1 overflow-y-auto min-h-0">
       <div className="px-10 py-8">
         {/* Title Row */}
         <div className="flex items-start justify-between mb-8">
@@ -360,8 +359,9 @@ export function AnalystView({ agent }: AnalystViewProps) {
           </div>
         </div>
       </div>
+      </div>
 
-      <ChatInput agentId="analyst" onSend={sendMessage} />
+      <ChatPanel agentId="analyst" />
     </div>
   );
 }
