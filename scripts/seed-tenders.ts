@@ -20,13 +20,10 @@ async function main() {
   const records = parse(raw, { columns: true, skip_empty_lines: true, bom: true });
   console.log(`Parsed ${records.length} rows`);
 
-  // Filter: English title exists, has a closing date, status is not Expired/Cancelled
+  // Filter: English title must exist (include expired/cancelled for demo data)
   const filtered = records.filter((r: Record<string, string>) => {
     const title = r["title-titre-eng"]?.trim();
-    const status = r["tenderStatus-appelOffresStatut-eng"]?.trim();
-    if (!title) return false;
-    if (status === "Expired" || status === "Cancelled") return false;
-    return true;
+    return !!title;
   });
 
   console.log(`Filtered to ${filtered.length} active tenders`);
