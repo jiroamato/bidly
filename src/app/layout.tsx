@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 
 const plexMono = IBM_Plex_Mono({
@@ -14,6 +14,12 @@ const plexSans = IBM_Plex_Sans({
   variable: "--font-sans",
 });
 
+const dmSerif = DM_Serif_Display({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-heading",
+});
+
 export const metadata: Metadata = {
   title: "Bidly — Procurement Assistant",
   description: "AI-powered Canadian government tender assistant",
@@ -26,14 +32,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body
-        className={`${plexMono.variable} ${plexSans.variable} antialiased`}
+        className={`${plexMono.variable} ${plexSans.variable} ${dmSerif.variable} antialiased`}
         style={{ fontFamily: "var(--font-sans)" }}
       >
         {children}

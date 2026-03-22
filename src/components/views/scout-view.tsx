@@ -103,7 +103,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
     <div className="flex-1 overflow-y-auto">
       <div className="px-10 py-8">
         {/* Title */}
-        <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 28, fontWeight: 400 }}>
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 400 }}>
           Matching Tenders
         </h1>
         <p

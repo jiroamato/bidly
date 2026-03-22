@@ -45,7 +45,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
   if (!tender) {
     return (
       <div className="p-10">
-        <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 28 }}>
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28 }}>
           No tender selected
         </h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -66,7 +66,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
         {/* Title Row */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 28, fontWeight: 400 }}>
+            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 400 }}>
               {tender.title}
             </h1>
             <div

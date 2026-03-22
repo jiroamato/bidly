@@ -78,7 +78,7 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
         {/* Title */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 28, fontWeight: 400 }}>
+            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 400 }}>
               Eligibility Assessment
             </h1>
             {tender && (

@@ -108,7 +108,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
       >
         {/* Chat Header */}
         <div className="px-6 py-5 border-b" style={{ borderColor: "var(--border-light)" }}>
-          <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, fontWeight: 400 }}>
+          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 22, fontWeight: 400 }}>
             Profile Builder
           </h2>
           <p
