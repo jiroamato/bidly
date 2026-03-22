@@ -5,13 +5,17 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createServerClient();
   const { id } = await params;
+  const parsedId = parseInt(id);
+  if (Number.isNaN(parsedId)) {
+    return NextResponse.json({ error: "Invalid tender id" }, { status: 400 });
+  }
 
+  const supabase = createServerClient();
   const { data, error } = await supabase
     .from("tenders")
     .select("*")
-    .eq("id", parseInt(id))
+    .eq("id", parsedId)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });

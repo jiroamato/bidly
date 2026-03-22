@@ -16,9 +16,14 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createServerClient();
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
+  const supabase = createServerClient();
   const { data, error } = await supabase
     .from("business_profiles")
     .insert(body)
@@ -30,10 +35,19 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const supabase = createServerClient();
-  const body = await request.json();
-  const { id, ...updates } = body;
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
+  const { id, ...updates } = body;
+  if (id === undefined) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  const supabase = createServerClient();
   const { data, error } = await supabase
     .from("business_profiles")
     .update(updates)
