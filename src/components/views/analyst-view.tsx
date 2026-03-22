@@ -2,6 +2,7 @@
 
 import { ChatInput } from "@/components/chat-input";
 import { AgentState } from "@/hooks/use-agent";
+import { useChat } from "@/hooks/use-chat";
 
 interface AnalystViewProps {
   agent: AgentState;
@@ -40,6 +41,7 @@ const MOCK_ANALYSIS = {
 };
 
 export function AnalystView({ agent }: AnalystViewProps) {
+  const { sendMessage } = useChat("analyst");
   const tender = agent.selectedTender;
 
   if (!tender) {
@@ -240,7 +242,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
         </div>
       </div>
 
-      <ChatInput agentId="analyst" onSend={() => {}} disabled />
+      <ChatInput agentId="analyst" onSend={sendMessage} />
     </div>
   );
 }
