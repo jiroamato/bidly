@@ -67,20 +67,36 @@ export function ProfileView({ agent }: ProfileViewProps) {
     }
 
     if (nextStep === QUESTIONS.length) {
-      // Profile confirmed
-      setTimeout(() => {
-        setIsComplete(true);
-        const profile: BusinessProfile = {
-          id: 1,
+      // Profile confirmed — persist to database
+      setTimeout(async () => {
+        const profileData = {
           company_name: newAnswers[0] || "My Company",
-          naics_codes: [],
+          naics_codes: [] as string[],
           location: newAnswers[1] || "Ontario",
           province: newAnswers[1] || "Ontario",
           capabilities: newAnswers[2] || "",
           keywords: (newAnswers[2] || "").split(",").map((s) => s.trim()).filter(Boolean),
-          created_at: new Date().toISOString(),
         };
-        agent.setProfile(profile);
+
+        try {
+          const res = await fetch("/api/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(profileData),
+          });
+
+          const saved = await res.json();
+          if (res.ok && saved.id) {
+            agent.setProfile(saved);
+          } else {
+            // Fallback to local profile if API fails
+            agent.setProfile({ ...profileData, id: 0, created_at: new Date().toISOString() });
+          }
+        } catch {
+          agent.setProfile({ ...profileData, id: 0, created_at: new Date().toISOString() });
+        }
+
+        setIsComplete(true);
         agent.completeAgent("profile");
 
         setMessages((prev) => [
