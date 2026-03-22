@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Tender } from "@/lib/types";
 import { ChatInput } from "@/components/chat-input";
 import { AgentState } from "@/hooks/use-agent";
+import { useChat } from "@/hooks/use-chat";
 
 interface ScoutViewProps {
   agent: AgentState;
@@ -14,6 +15,7 @@ type TenderWithScore = Tender & { match_score: number };
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
 export function ScoutView({ agent }: ScoutViewProps) {
+  const { sendMessage } = useChat("scout");
   const [activeFilter, setActiveFilter] = useState("All Matches");
   const [tenders, setTenders] = useState<TenderWithScore[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,7 +244,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
       </div>
 
       {/* Chat Input */}
-      <ChatInput agentId="scout" onSend={() => {}} disabled />
+      <ChatInput agentId="scout" onSend={sendMessage} />
     </div>
   );
 }
