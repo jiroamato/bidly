@@ -1,4 +1,4 @@
-# BidAI — Design Spec
+# Bidly — Design Spec
 
 **Date:** 2026-03-22
 **Context:** 6-hour hackathon ("Build Canada" theme), 4-person team, vibe-coding
@@ -10,7 +10,7 @@
 
 Canadian businesses — especially small and mid-sized ones — struggle to compete for government contracts. The procurement process is fragmented across multiple portals (CanadaBuys, BC Bid, MERX), RFP documents are dense with legal/procurement jargon, Buy Canadian compliance is confusing, and missing a single mandatory form means automatic disqualification.
 
-BidAI is an AI-powered procurement assistant that guides businesses through the entire process: finding relevant tenders, understanding requirements, checking eligibility, and drafting competitive bids.
+Bidly is an AI-powered procurement assistant that guides businesses through the entire process: finding relevant tenders, understanding requirements, checking eligibility, and drafting competitive bids.
 
 ---
 
@@ -153,7 +153,7 @@ Two primary zones:
 
 ```
 ┌─────────────────┐
-│ [logo] BidAI    │  Brand mark + wordmark
+│ [logo] Bidly    │  Brand mark + wordmark
 │                 │
 │ ⚙ SETUP         │  Category header (mono, 10px, tracked)
 │   ✓ Profile     │  Completed state (green)
@@ -170,7 +170,7 @@ Two primary zones:
 │ Amato Plumbing  │  Company name (from profile)
 │ Ontario • 238220│  Province + NAICS
 │                 │
-│ BidAI v1.0      │  Branding footer
+│ Bidly v1.0      │  Branding footer
 │ © 2026          │
 └─────────────────┘
 ```
@@ -514,7 +514,7 @@ interface FormChecklist {
 
 ### System Prompt Structure
 ```
-You are BidAI, a procurement assistant for Canadian businesses.
+You are Bidly, a procurement assistant for Canadian businesses.
 You have access to the user's company profile: {profile}
 You help them find, understand, and bid on government tenders.
 When summarizing, always structure output as:

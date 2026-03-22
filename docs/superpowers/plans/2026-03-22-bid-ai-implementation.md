@@ -1,4 +1,4 @@
-# BidAI Implementation Plan
+# Bidly Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Supabase (PostgreSQL + pgvector), Anthropic Claude API, Voyage AI (embeddings), IBM Plex Mono/Sans + DM Serif Display
 
-**Spec:** `docs/superpowers/specs/2026-03-22-bid-ai-design.md`
+**Spec:** `docs/superpowers/specs/2026-03-22-bidly-design.md`
 
 **Mockups:** `.superpowers/brainstorm/10729-1774195258/agent-*.html`
 
@@ -28,8 +28,8 @@ Before splitting into tracks, everyone does this together:
 - [ ] **Step 1: Person 2 creates the Next.js project (others watch/clone after)**
 
 ```bash
-npx create-next-app@latest bid-ai --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --no-turbopack
-cd bid-ai
+npx create-next-app@latest bidly --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --no-turbopack
+cd bidly
 ```
 
 When prompted: Use App Router = Yes, use `src/` directory = Yes.
@@ -45,7 +45,7 @@ git push origin main
 Other team members:
 ```bash
 git clone <repo-url>
-cd bid-ai
+cd bidly
 npm install
 ```
 
@@ -100,7 +100,7 @@ Everyone else: `git pull origin main && npm install`
 ## File Structure
 
 ```
-bid-ai/
+bidly/
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx                    # Root layout — IBM Plex fonts, body
@@ -164,7 +164,7 @@ bid-ai/
 
 - [ ] **Step 1: Create Supabase project**
 
-Go to https://supabase.com/dashboard → New Project → name: `bid-ai`. Pick the closest region. Copy:
+Go to https://supabase.com/dashboard → New Project → name: `bidly`. Pick the closest region. Copy:
 - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
 - Anon public key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - Service role key → `SUPABASE_SERVICE_ROLE_KEY`
@@ -184,7 +184,7 @@ create extension if not exists vector;
 Create `supabase/migrations/001_initial_schema.sql`:
 
 ```sql
--- BidAI Schema
+-- Bidly Schema
 -- Following Supabase Postgres best practices:
 -- - bigint identity PKs (sequential, no fragmentation)
 -- - indexes on all FK columns
@@ -987,7 +987,7 @@ const plexSans = IBM_Plex_Sans({
 // DM Serif Display loaded via <link> tag in <head> below
 
 export const metadata: Metadata = {
-  title: "BidAI — Procurement Assistant",
+  title: "Bidly — Procurement Assistant",
   description: "AI-powered Canadian government tender assistant",
 };
 
@@ -1123,7 +1123,7 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
           className="text-[15px] font-semibold tracking-wide"
           style={{ fontFamily: "var(--font-mono)" }}
         >
-          BidAI
+          Bidly
         </span>
       </div>
 
@@ -1237,7 +1237,7 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
           className="mt-4 text-[9px] tracking-wide"
           style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
         >
-          BidAI v1.0
+          Bidly v1.0
           <br />© 2026 Hackathon Build
         </div>
       </div>
@@ -1451,7 +1451,7 @@ The component manages its own chat state and profile-building state. It calls `/
 ```tsx
 // Mock: replace with API call later
 const mockResponses: Record<number, string> = {
-  0: "Welcome to BidAI! I'll help you find and bid on government contracts. First, what's your company name?",
+  0: "Welcome to Bidly! I'll help you find and bid on government contracts. First, what's your company name?",
   1: "Great! What province are you based in?",
   2: "What services does your company provide?",
   3: "What's your typical project size range and do you have certifications like WSIB or bonding?",
@@ -1766,7 +1766,7 @@ Create `src/lib/ai/prompts.ts`:
 import { AgentId } from "@/lib/types";
 
 export function getSystemPrompt(agentId: AgentId, profileContext: string): string {
-  const base = `You are BidAI, an AI procurement assistant for Canadian businesses.
+  const base = `You are Bidly, an AI procurement assistant for Canadian businesses.
 ${profileContext ? `The user's company profile: ${profileContext}` : ""}
 You help them find, understand, and bid on government tenders.`;
 
