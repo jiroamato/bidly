@@ -1,15 +1,29 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AgentId } from "@/lib/types";
+import { AgentId, BusinessProfile, Tender } from "@/lib/types";
 import { getAgent } from "@/lib/agents";
 import { useChat } from "@/hooks/use-chat";
 
 interface ChatPanelProps {
   agentId: AgentId;
+  selectedTender?: Tender | null;
+  profile?: BusinessProfile | null;
 }
 
-export function ChatPanel({ agentId }: ChatPanelProps) {
+function buildContext(selectedTender?: Tender | null, profile?: BusinessProfile | null): string {
+  const parts: string[] = [];
+  if (profile) {
+    parts.push(`Company: ${profile.company_name} | Location: ${profile.location || profile.province} | Services: ${profile.capabilities} | Keywords: ${profile.keywords.join(", ")}`);
+  }
+  if (selectedTender) {
+    parts.push(`Selected Contract: "${selectedTender.title}" | Ref: ${selectedTender.reference_number} | Entity: ${selectedTender.contracting_entity} | Closes: ${selectedTender.closing_date} | Regions: ${selectedTender.regions_of_delivery.join(", ")} | Description: ${selectedTender.description}`);
+  }
+  return parts.join("\n\n");
+}
+
+export function ChatPanel({ agentId, selectedTender, profile }: ChatPanelProps) {
+  const context = buildContext(selectedTender, profile);
   const { messages, isLoading, error, sendMessage } = useChat(agentId);
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -33,7 +47,7 @@ export function ChatPanel({ agentId }: ChatPanelProps) {
   const handleSubmit = () => {
     const text = inputValue.trim();
     if (!text || isLoading) return;
-    sendMessage(text);
+    sendMessage(text, context || undefined);
     setInputValue("");
   };
 
