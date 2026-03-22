@@ -30,7 +30,9 @@ export function ScoutView({ agent }: ScoutViewProps) {
         const scored = data.map((t) => {
           const text = `${t.title} ${t.description} ${t.contracting_entity}`.toLowerCase();
           const hits = BOOST_KEYWORDS.filter((kw) => text.includes(kw)).length;
-          const score = hits >= 2 ? 97 : hits === 1 ? 88 : Math.floor(40 + Math.random() * 30);
+          // RCMP + janitorial/cleaning combo gets top score
+          const isRcmpJanitorial = text.includes("rcmp") && (text.includes("janitorial") || text.includes("cleaning"));
+          const score = isRcmpJanitorial ? 99 : hits >= 2 ? 97 : hits === 1 ? 88 : Math.floor(40 + Math.random() * 30);
           return { ...t, match_score: score };
         });
         scored.sort((a, b) => b.match_score - a.match_score);
