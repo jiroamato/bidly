@@ -49,6 +49,25 @@
 }
 
 :root {
+  /* Bidly design tokens */
+  --bg: #f8f7f5;
+  --white: #ffffff;
+  --sidebar-bg: #fbfaf9;
+  --bidly-border: #e8e5e0;
+  --border-light: #f0ede8;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6b6560;
+  --text-muted: #a09a94;
+  --text-hint: #c4bfb8;
+  --accent-red: #c41e3a;
+  --agent-profile: #e67e22;
+  --agent-scout: #3b82f6;
+  --agent-analyst: #06b6d4;
+  --agent-compliance: #10b981;
+  --agent-writer: #8b5cf6;
+  --success: #1a7a4c;
+
+  /* shadcn tokens */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -117,12 +136,15 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
