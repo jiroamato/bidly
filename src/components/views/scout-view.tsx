@@ -54,7 +54,9 @@ export function ScoutView({ agent }: ScoutViewProps) {
     const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     return diff <= 14;
   }).length;
-  const avgScore = Math.round(tenders.reduce((s, t) => s + t.match_score, 0) / tenders.length);
+  const avgScore = tenders.length > 0
+    ? Math.round(tenders.reduce((s, t) => s + t.match_score, 0) / tenders.length)
+    : 0;
 
   const handleAnalyze = (tender: Tender) => {
     agent.setSelectedTender(tender);
@@ -116,7 +118,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-8">
           {[
-            { label: "Total Matches", value: tenders.length.toString(), color: "var(--agent-scout)", detail: "from 312 open tenders" },
+            { label: "Total Matches", value: tenders.length.toString(), color: "var(--agent-scout)", detail: `from ${tenders.length} loaded tenders` },
             { label: "High Match (>80%)", value: highMatch.toString(), color: "var(--text-primary)" },
             { label: "Closing Soon", value: closingSoon.toString(), color: "var(--accent-red)" },
             { label: "Avg Match Score", value: `${avgScore}%`, color: "var(--text-primary)" },
