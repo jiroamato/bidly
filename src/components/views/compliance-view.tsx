@@ -44,6 +44,33 @@ const RESULT_STYLES: Record<string, { border: string; color: string }> = {
   not_eligible: { border: "var(--accent-red)", color: "var(--accent-red)" },
 };
 
+/* ---------- DEMO DATA ---------- */
+
+const DEMO_PAIRS: { answer: string; nextQuestion: string }[] = [
+  {
+    answer:
+      "We carry $2M commercial liability insurance coverage.",
+    nextQuestion:
+      "Good — $2M liability coverage noted. Do you have any certifications such as WSIB, bonding, or relevant trade licenses?",
+  },
+  {
+    answer:
+      "We're WSIB equivalent certified and bonded up to $500K. We also hold janitorial and facility maintenance licenses.",
+    nextQuestion:
+      "Are you able to attend any mandatory site visits? Do you have prior experience with similar government contracts?",
+  },
+  {
+    answer:
+      "Yes, we can attend mandatory site visits. We have experience with government facilities including RCMP detachments across Saskatchewan.",
+    nextQuestion:
+      "Let me confirm what I have: $2M liability insurance, WSIB equivalent certification, bonded up to $500K, government facility experience including RCMP. Is there anything else, or should I run the eligibility assessment?",
+  },
+  {
+    answer: "That covers everything. Please run the assessment.",
+    nextQuestion: "", // triggers assessment generation
+  },
+];
+
 export function ComplianceView({ agent }: ComplianceViewProps) {
   const tender = agent.selectedTender;
   const profile = agent.profile;
@@ -58,6 +85,11 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [assessment, setAssessment] = useState<ComplianceAssessment | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Demo state
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoStep, setDemoStep] = useState(0);
+  const lastDemoStep = useRef(-1);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
@@ -100,6 +132,50 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
     },
     [tender, profile, agent]
   );
+
+  /* ---------- DEMO MODE: auto-advance with slow pacing ---------- */
+
+  useEffect(() => {
+    if (!demoMode || assessment) return;
+    if (lastDemoStep.current >= demoStep) return;
+    lastDemoStep.current = demoStep;
+
+    if (demoStep >= DEMO_PAIRS.length) return;
+    const pair = DEMO_PAIRS[demoStep];
+
+    // Pause before user answer appears
+    const userTimer = setTimeout(() => {
+      const userMsg: ChatMessage = { role: "user", content: pair.answer, timestamp: Date.now() };
+      setMessages((prev) => [...prev, userMsg]);
+
+      if (pair.nextQuestion) {
+        // Typing indicator after a pause
+        setTimeout(() => setIsTyping(true), 600);
+        // Then bot response
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: pair.nextQuestion, timestamp: Date.now() },
+          ]);
+          setDemoStep((s) => s + 1);
+        }, 2000);
+      } else {
+        // Final step — generate real assessment
+        setTimeout(() => {
+          const allMessages = [
+            ...messagesRef.current,
+            userMsg,
+          ];
+          generateAssessment(allMessages);
+        }, 600);
+      }
+    }, 1200);
+
+    return () => clearTimeout(userTimer);
+  }, [demoMode, demoStep, assessment, generateAssessment]);
+
+  const handleDemoClick = () => setDemoMode(true);
 
   const handleSend = useCallback(
     async (text: string) => {
@@ -201,7 +277,7 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
                 </p>
               )}
             </div>
-            {assessment && (
+            {assessment ? (
               <button
                 onClick={handleBeginDraft}
                 className="px-5 py-2.5 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer transition-opacity hover:opacity-80"
@@ -214,6 +290,22 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
               >
                 Begin Bid Draft &rarr;
               </button>
+            ) : (
+              !demoMode && userMessageCount === 0 && (
+                <button
+                  onClick={handleDemoClick}
+                  className="text-[10px] tracking-[1px] uppercase px-4 py-2 border transition-all hover:border-[var(--agent-compliance)] hover:text-[var(--agent-compliance)] hover:shadow-sm mt-1"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    borderColor: "var(--bidly-border)",
+                    background: "var(--white)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Load Demo
+                </button>
+              )
             )}
           </div>
 
@@ -580,7 +672,7 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
             <ChatInput
               agentId="compliance"
               onSend={handleSend}
-              disabled={isTyping || isGenerating}
+              disabled={isTyping || isGenerating || demoMode}
             />
           </div>
         </div>
