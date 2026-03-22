@@ -105,7 +105,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
   // Demo state
   const [demoMode, setDemoMode] = useState(false);
   const [demoStep, setDemoStep] = useState(0);
-  const [demoReady, setDemoReady] = useState(true);
+  const lastDemoStep = useRef(-1);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
@@ -154,55 +154,47 @@ export function ProfileView({ agent }: ProfileViewProps) {
     [agent]
   );
 
-  /* ---------- DEMO MODE: manual arrow advance ---------- */
+  /* ---------- DEMO MODE: auto-advance with slow pacing ---------- */
 
-  const advanceDemo = useCallback(() => {
-    if (!demoMode || isComplete || !demoReady) return;
-    if (demoStep >= DEMO_PAIRS.length) return;
-
-    const pair = DEMO_PAIRS[demoStep];
-    setDemoReady(false);
-
-    // Add user answer
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: pair.answer, timestamp: Date.now() },
-    ]);
-
-    if (pair.nextQuestion) {
-      // Typing indicator → then bot response
-      setTimeout(() => setIsTyping(true), 300);
-      setTimeout(() => {
-        setIsTyping(false);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: pair.nextQuestion, timestamp: Date.now() },
-        ]);
-        setDemoStep((s) => s + 1);
-        setDemoReady(true);
-      }, 1000);
-    } else {
-      // Final step — save
-      setTimeout(() => setIsTyping(true), 300);
-      setTimeout(() => {
-        setIsTyping(false);
-        saveProfile(DEMO_PROFILE_PAYLOAD);
-      }, 800);
-    }
-  }, [demoMode, demoStep, demoReady, isComplete, saveProfile]);
-
-  // Arrow-key listener
   useEffect(() => {
-    if (!demoMode) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") {
-        e.preventDefault();
-        advanceDemo();
+    if (!demoMode || isComplete) return;
+    if (lastDemoStep.current >= demoStep) return;
+    lastDemoStep.current = demoStep;
+
+    if (demoStep >= DEMO_PAIRS.length) return;
+    const pair = DEMO_PAIRS[demoStep];
+
+    // Pause before user answer appears
+    const userTimer = setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: pair.answer, timestamp: Date.now() },
+      ]);
+
+      if (pair.nextQuestion) {
+        // Typing indicator after a pause
+        setTimeout(() => setIsTyping(true), 600);
+        // Then bot response
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: pair.nextQuestion, timestamp: Date.now() },
+          ]);
+          setDemoStep((s) => s + 1);
+        }, 2000);
+      } else {
+        // Final step — typing then save
+        setTimeout(() => setIsTyping(true), 600);
+        setTimeout(() => {
+          setIsTyping(false);
+          saveProfile(DEMO_PROFILE_PAYLOAD);
+        }, 1800);
       }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [demoMode, advanceDemo]);
+    }, 1200);
+
+    return () => clearTimeout(userTimer);
+  }, [demoMode, demoStep, isComplete, saveProfile]);
 
   /* ---------- NORMAL MODE: AI chatbot ---------- */
 
@@ -701,55 +693,18 @@ export function ProfileView({ agent }: ProfileViewProps) {
         </div>
       </div>
 
-      {/* Bottom bar */}
-      {!isComplete && (
+      {/* Bottom bar — hidden during demo and after completion */}
+      {!isComplete && !demoMode && (
         <div
           className="flex-shrink-0 border-t"
           style={{ background: "var(--white)", borderColor: "var(--border-light)" }}
         >
           <div className="max-w-[860px] mx-auto px-10 py-5">
-            {demoMode ? (
-              /* Demo: arrow advance bar */
-              <div className="flex items-center justify-between">
-                <span
-                  className="text-[11px] tracking-[0.5px]"
-                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-                >
-                  Press{" "}
-                  <span
-                    className="inline-block px-1.5 py-0.5 mx-0.5 border text-[10px]"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      borderColor: "var(--bidly-border)",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    &rarr;
-                  </span>{" "}
-                  to advance
-                </span>
-                <button
-                  onClick={advanceDemo}
-                  disabled={!demoReady}
-                  className="flex items-center gap-2 px-5 py-3 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer transition-all hover:opacity-80 disabled:opacity-40"
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    background: "var(--agent-profile)",
-                    color: "var(--white)",
-                    border: "none",
-                  }}
-                >
-                  Next Step &rarr;
-                </button>
-              </div>
-            ) : (
-              /* Normal: AI chat input */
-              <ChatInput
-                agentId="profile"
-                onSend={handleSend}
-                disabled={isTyping}
-              />
-            )}
+            <ChatInput
+              agentId="profile"
+              onSend={handleSend}
+              disabled={isTyping}
+            />
           </div>
         </div>
       )}
