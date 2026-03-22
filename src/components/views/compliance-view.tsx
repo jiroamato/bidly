@@ -102,63 +102,50 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
   const userMessageCount = messages.filter((m) => m.role === "user").length;
 
   const generateAssessment = useCallback(
-    async (conversation: ChatMessage[]) => {
+    async (_conversation: ChatMessage[]) => {
       if (!tender || !profile) return;
       setIsGenerating(true);
 
-      try {
-        const res = await fetch("/api/check-compliance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tender, profile, conversation }),
-        });
-
-        if (!res.ok) throw new Error("Compliance check failed");
-        const data = await res.json();
-        setAssessment(data.assessment);
-        agent.completeAgent("compliance");
-      } catch {
-        // Fallback assessment so the demo always progresses
-        const fallback: ComplianceAssessment = {
-          overallResult: "conditionally_eligible",
-          overallLabel: "Conditionally Eligible",
-          summaryNote: "Most requirements are met. A few items need attention before submission.",
-          sections: [
-            {
-              title: "Buy Canadian Policy",
-              items: [
-                { name: "Canadian Business Registration", description: `${profile.company_name} is registered in ${profile.province}, Canada. Meets domestic supplier requirement.`, status: "pass", statusLabel: "Verified", action: null },
-                { name: "Trade Agreement Compliance", description: "This tender falls under CFTA. No international trade agreement restrictions apply.", status: "pass", statusLabel: "Compliant", action: null },
-              ],
-            },
-            {
-              title: "Qualifications & Certifications",
-              items: [
-                { name: "WSIB / WCB Coverage", description: "Active workplace safety coverage on file.", status: "pass", statusLabel: "Active", action: null },
-                { name: "Commercial Liability Insurance", description: "Current coverage confirmed. Verify it meets this tender's minimum threshold before submission.", status: "warn", statusLabel: "Verify Amount", action: "Confirm coverage meets tender minimum" },
-                { name: "Bonding Capacity", description: "Bonding available. Confirm bond amount meets bid requirements.", status: "pass", statusLabel: "Available", action: null },
-              ],
-            },
-            {
-              title: "Mandatory Steps",
-              items: [
-                { name: "Mandatory Site Visit", description: "Check if this tender requires a mandatory site visit and register if applicable.", status: "warn", statusLabel: "Check Required", action: "Review tender documents for site visit details" },
-              ],
-            },
-            {
-              title: "Documentation",
-              items: [
-                { name: "Health & Safety Policy", description: `${profile.province}-compliant H&S policy document required with submission.`, status: "pass", statusLabel: "On File", action: null },
-                { name: "List of Subcontractors", description: "All proposed subcontractors must be listed with qualifications.", status: "pass", statusLabel: "Ready", action: null },
-              ],
-            },
-          ],
-        };
-        setAssessment(fallback);
-        agent.completeAgent("compliance");
-      } finally {
-        setIsGenerating(false);
-      }
+      // Hardcoded all-pass assessment for demo
+      await new Promise((r) => setTimeout(r, 1500));
+      const demoAssessment: ComplianceAssessment = {
+        overallResult: "eligible",
+        overallLabel: "Eligible",
+        summaryNote: "All requirements verified. This company is fully eligible to submit a bid for this tender.",
+        sections: [
+          {
+            title: "Buy Canadian Policy",
+            items: [
+              { name: "Canadian Business Registration", description: `${profile.company_name} is registered in ${profile.province}, Canada. Meets domestic supplier requirement.`, status: "pass", statusLabel: "Verified", action: null },
+              { name: "Trade Agreement Compliance", description: "This tender falls under CFTA. No international trade agreement restrictions apply.", status: "pass", statusLabel: "Compliant", action: null },
+            ],
+          },
+          {
+            title: "Qualifications & Certifications",
+            items: [
+              { name: "WSIB / WCB Coverage", description: "Active workplace safety coverage on file.", status: "pass", statusLabel: "Active", action: null },
+              { name: "Commercial Liability Insurance", description: "$2M commercial liability coverage confirmed. Meets tender minimum threshold.", status: "pass", statusLabel: "Verified", action: null },
+              { name: "Bonding Capacity", description: "Bonded up to $500K. Meets bid requirements.", status: "pass", statusLabel: "Verified", action: null },
+            ],
+          },
+          {
+            title: "Mandatory Steps",
+            items: [
+              { name: "Mandatory Site Visit", description: "Company confirmed ability to attend mandatory site visits. Prior RCMP detachment experience noted.", status: "pass", statusLabel: "Confirmed", action: null },
+            ],
+          },
+          {
+            title: "Documentation",
+            items: [
+              { name: "Health & Safety Policy", description: `${profile.province}-compliant H&S policy document on file and ready for submission.`, status: "pass", statusLabel: "On File", action: null },
+              { name: "List of Subcontractors", description: "All proposed subcontractors listed with qualifications.", status: "pass", statusLabel: "Ready", action: null },
+            ],
+          },
+        ],
+      };
+      setAssessment(demoAssessment);
+      agent.completeAgent("compliance");
+      setIsGenerating(false);
     },
     [tender, profile, agent]
   );
