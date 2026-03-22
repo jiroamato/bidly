@@ -60,9 +60,9 @@ export function ProfileView({ agent }: ProfileViewProps) {
   const [isComplete, setIsComplete] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [demoWaiting, setDemoWaiting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const demoModeRef = useRef(false);
-  const lastDemoStep = useRef(-1);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -141,20 +141,22 @@ export function ProfileView({ agent }: ProfileViewProps) {
     [answers, step, isComplete, agent]
   );
 
-  // Demo auto-fill: advance one answer each time step changes
+  // Re-enable the "Next" button once the next question appears
   useEffect(() => {
-    if (!demoMode || isComplete) return;
-    if (lastDemoStep.current >= step) return;
-    lastDemoStep.current = step;
-    const timer = setTimeout(() => {
-      handleSend(DEMO_ANSWERS[step]);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [demoMode, step, isComplete, handleSend]);
+    if (demoMode && demoWaiting) {
+      setDemoWaiting(false);
+    }
+  }, [step, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDemoClick = () => {
     demoModeRef.current = true;
     setDemoMode(true);
+  };
+
+  const handleDemoNext = () => {
+    if (demoWaiting || isComplete) return;
+    setDemoWaiting(true);
+    handleSend(DEMO_ANSWERS[step]);
   };
 
   const completedSteps = Math.min(answers.length, STEP_LABELS.length);
@@ -524,11 +526,28 @@ export function ProfileView({ agent }: ProfileViewProps) {
           style={{ background: "var(--white)", borderColor: "var(--border-light)" }}
         >
           <div className="max-w-[860px] mx-auto px-10 py-5">
-            <ChatInput
-              agentId="profile"
-              onSend={handleSend}
-              disabled={isComplete || demoMode}
-            />
+            {demoMode ? (
+              <button
+                onClick={handleDemoNext}
+                disabled={demoWaiting}
+                className="w-full flex items-center justify-center gap-3 py-4 text-[11px] font-semibold tracking-[1.5px] uppercase transition-all cursor-pointer"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  background: demoWaiting ? "var(--border-light)" : "var(--agent-profile)",
+                  color: demoWaiting ? "var(--text-muted)" : "var(--white)",
+                  border: "none",
+                  opacity: demoWaiting ? 0.6 : 1,
+                }}
+              >
+                {demoWaiting ? "..." : "Next \u2192"}
+              </button>
+            ) : (
+              <ChatInput
+                agentId="profile"
+                onSend={handleSend}
+                disabled={isComplete}
+              />
+            )}
           </div>
         </div>
       )}
