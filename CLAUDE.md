@@ -1,5 +1,7 @@
 # Project Instructions
 
+@AGENTS.md
+
 ## Git Workflow
 
 ### Branch Naming (Semantic Feature Branches)
