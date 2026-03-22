@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
@@ -23,12 +23,31 @@ const PROVINCE_OPTIONS = [
   "Newfoundland", "PEI", "Yukon", "NWT", "Nunavut",
 ];
 
-const CARD_LABELS = [
-  "Company Name",
-  "Location",
-  "Services & Capabilities",
-  "Certifications & Scale",
+const DEMO_ANSWERS = [
+  "Maple Facility Services Inc.",
+  "Saskatchewan",
+  "Commercial janitorial and facility cleaning services, HVAC cleaning, general office cleaning, floor care, window cleaning, post-construction cleanup",
+  "Typical contracts $50K-$500K. Bonded, WSIB equivalent certified, $2M liability insurance. Government facility experience including RCMP detachments.",
+  "Yes, looks great!",
 ];
+
+const DEMO_PROFILE_PAYLOAD = {
+  company_name: "Maple Facility Services Inc.",
+  naics_codes: ["561720", "561210"],
+  location: "Regina, Saskatchewan",
+  province: "Saskatchewan",
+  capabilities:
+    "Commercial janitorial and facility cleaning services. HVAC system cleaning, general office cleaning, floor care, window cleaning, post-construction cleanup. Government facility experience including RCMP detachments. Typical contracts $50K-$500K. Bonded, WSIB equivalent certified, $2M liability insurance.",
+  keywords: [
+    "janitorial",
+    "cleaning",
+    "HVAC cleaning",
+    "facility maintenance",
+    "custodial",
+    "commercial cleaning",
+    "government facilities",
+  ],
+};
 
 export function ProfileView({ agent }: ProfileViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -37,102 +56,147 @@ export function ProfileView({ agent }: ProfileViewProps) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const demoModeRef = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, showProfile]);
 
-  const progressPct = Math.min((answers.length / 4) * 100, 100);
+  const handleSend = useCallback(
+    (text: string) => {
+      if (isComplete) return;
 
-  const handleSend = (text: string) => {
-    if (isComplete) return;
+      const newAnswers = [...answers, text];
+      setAnswers(newAnswers);
 
-    const newAnswers = [...answers, text];
-    setAnswers(newAnswers);
+      const userMsg: ChatMessage = { role: "user", content: text, timestamp: Date.now() };
+      setMessages((prev) => [...prev, userMsg]);
 
-    const userMsg: ChatMessage = { role: "user", content: text, timestamp: Date.now() };
-    setMessages((prev) => [...prev, userMsg]);
+      const nextStep = step + 1;
 
-    const nextStep = step + 1;
+      if (nextStep < QUESTIONS.length) {
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: QUESTIONS[nextStep], timestamp: Date.now() },
+          ]);
+          setStep(nextStep);
+        }, 500);
+      }
 
-    if (nextStep < QUESTIONS.length) {
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: QUESTIONS[nextStep], timestamp: Date.now() },
-        ]);
-        setStep(nextStep);
-      }, 500);
-    }
+      if (nextStep === QUESTIONS.length) {
+        setTimeout(async () => {
+          const profileData = {
+            company_name: newAnswers[0] || "My Company",
+            naics_codes: [] as string[],
+            location: newAnswers[1] || "Ontario",
+            province: newAnswers[1] || "Ontario",
+            capabilities: newAnswers[2] || "",
+            keywords: (newAnswers[2] || "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+          };
 
-    if (nextStep === QUESTIONS.length) {
-      // Profile confirmed — persist to database
-      setTimeout(async () => {
-        const profileData = {
-          company_name: newAnswers[0] || "My Company",
-          naics_codes: [] as string[],
-          location: newAnswers[1] || "Ontario",
-          province: newAnswers[1] || "Ontario",
-          capabilities: newAnswers[2] || "",
-          keywords: (newAnswers[2] || "").split(",").map((s) => s.trim()).filter(Boolean),
-        };
+          const payload = demoModeRef.current ? DEMO_PROFILE_PAYLOAD : profileData;
 
-        try {
-          const res = await fetch("/api/profile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(profileData),
-          });
+          try {
+            const res = await fetch("/api/profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
 
-          const saved = await res.json();
-          if (res.ok && saved.id) {
-            agent.setProfile(saved);
-          } else {
-            // Fallback to local profile if API fails
-            agent.setProfile({ ...profileData, id: 0, created_at: new Date().toISOString() });
+            const saved = await res.json();
+            if (res.ok && saved.id) {
+              agent.setProfile(saved);
+            } else {
+              agent.setProfile({
+                ...payload,
+                id: 0,
+                created_at: new Date().toISOString(),
+              } as BusinessProfile);
+            }
+          } catch {
+            agent.setProfile({
+              ...payload,
+              id: 0,
+              created_at: new Date().toISOString(),
+            } as BusinessProfile);
           }
-        } catch {
-          agent.setProfile({ ...profileData, id: 0, created_at: new Date().toISOString() });
-        }
 
-        setIsComplete(true);
-        agent.completeAgent("profile");
+          setIsComplete(true);
+          agent.completeAgent("profile");
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: "Profile saved! Scout is now unlocked — let's find tenders that match your business.",
-            timestamp: Date.now(),
-          },
-        ]);
-      }, 600);
-    }
-  };
+          setTimeout(() => setShowProfile(true), 400);
+        }, 600);
+      }
+    },
+    [answers, step, isComplete, agent]
+  );
 
-  const handleOptionClick = (option: string) => {
-    handleSend(option);
+  // Demo auto-fill: advance one answer each time step changes
+  useEffect(() => {
+    if (!demoMode || isComplete) return;
+    const timer = setTimeout(() => {
+      handleSend(DEMO_ANSWERS[step]);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [demoMode, step, isComplete, handleSend]);
+
+  const handleDemoClick = () => {
+    demoModeRef.current = true;
+    setDemoMode(true);
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden h-full">
-      {/* Chat Column */}
+    <div className="flex flex-1 overflow-hidden h-full justify-center">
       <div
-        className="w-[420px] border-r flex flex-col flex-shrink-0"
-        style={{ background: "var(--white)", borderColor: "var(--bidly-border)" }}
+        className="w-full max-w-[620px] flex flex-col"
+        style={{ background: "var(--white)" }}
       >
-        {/* Chat Header */}
+        {/* Header */}
         <div className="px-6 py-5 border-b" style={{ borderColor: "var(--border-light)" }}>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 22, fontWeight: 400 }}>
-            Profile Builder
-          </h2>
-          <p
-            className="mt-1 text-[11px] tracking-[0.5px]"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-          >
-            Tell me about your business to get started
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: 22,
+                  fontWeight: 400,
+                }}
+              >
+                Profile Builder
+              </h2>
+              <p
+                className="mt-1 text-[11px] tracking-[0.5px]"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                Tell me about your business to get started
+              </p>
+            </div>
+            {!demoMode && !isComplete && answers.length === 0 && (
+              <button
+                onClick={handleDemoClick}
+                className="text-[10px] tracking-[1px] uppercase px-3 py-1.5 border transition-colors hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)]"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  borderColor: "var(--bidly-border)",
+                  background: "transparent",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                Load Demo
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
@@ -143,7 +207,10 @@ export function ProfileView({ agent }: ProfileViewProps) {
                 className="text-[10px] tracking-[1.5px] uppercase mb-1.5"
                 style={{
                   fontFamily: "var(--font-mono)",
-                  color: msg.role === "assistant" ? "var(--agent-profile)" : "var(--text-muted)",
+                  color:
+                    msg.role === "assistant"
+                      ? "var(--agent-profile)"
+                      : "var(--text-muted)",
                 }}
               >
                 {msg.role === "assistant" ? "Profile" : "You"}
@@ -161,153 +228,153 @@ export function ProfileView({ agent }: ProfileViewProps) {
               </div>
 
               {/* Province options on step 1 */}
-              {msg.role === "assistant" && step === 1 && i === messages.length - 1 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {PROVINCE_OPTIONS.map((prov) => (
-                    <button
-                      key={prov}
-                      onClick={() => handleOptionClick(prov)}
-                      className="text-[11px] tracking-[0.5px] px-4 py-2 border transition-colors hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)]"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        borderColor: "var(--bidly-border)",
-                        background: "var(--white)",
-                        color: "var(--text-secondary)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {prov}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {msg.role === "assistant" &&
+                step === 1 &&
+                i === messages.length - 1 &&
+                !demoMode && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {PROVINCE_OPTIONS.map((prov) => (
+                      <button
+                        key={prov}
+                        onClick={() => handleSend(prov)}
+                        className="text-[11px] tracking-[0.5px] px-4 py-2 border transition-colors hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)]"
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          borderColor: "var(--bidly-border)",
+                          background: "var(--white)",
+                          color: "var(--text-secondary)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {prov}
+                      </button>
+                    ))}
+                  </div>
+                )}
             </div>
           ))}
-          <div ref={messagesEndRef} />
-        </div>
 
-        {/* Chat Input */}
-        <div className="px-6 py-4 border-t" style={{ borderColor: "var(--border-light)" }}>
-          <ChatInput agentId="profile" onSend={handleSend} disabled={isComplete} />
-        </div>
-      </div>
-
-      {/* Profile Cards Panel */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div
-          className="text-[10px] font-medium tracking-[2px] uppercase mb-5"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-        >
-          Business Profile
-        </div>
-
-        {/* Progress */}
-        <div
-          className="border p-5 mb-6"
-          style={{ background: "var(--white)", borderColor: "var(--bidly-border)" }}
-        >
-          <div
-            className="text-[10px] tracking-[2px] uppercase mb-2.5"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-          >
-            Profile Progress
-          </div>
-          <div
-            className="h-1 mb-2"
-            style={{ background: "var(--border-light)" }}
-          >
-            <div
-              className="h-full transition-all duration-[600ms]"
-              style={{ width: `${progressPct}%`, background: "var(--agent-profile)" }}
-            />
-          </div>
-          <div
-            className="text-[11px]"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}
-          >
-            {answers.length} of 4 fields completed
-          </div>
-        </div>
-
-        {/* Cards */}
-        {CARD_LABELS.map((label, i) => {
-          const hasAnswer = i < answers.length;
-          const isBuilding = i === answers.length && !isComplete;
-
-          if (isBuilding) {
-            return (
+          {/* Profile Card — animated in after completion */}
+          {showProfile && (
+            <div style={{ animation: "profileReveal 0.6s ease-out forwards" }}>
               <div
-                key={label}
-                className="border border-dashed p-5 mb-3"
+                className="border p-6 mt-4"
                 style={{
                   background: "var(--white)",
                   borderColor: "var(--agent-profile)",
-                  opacity: 0.7,
+                  borderWidth: 2,
                 }}
               >
                 <div
-                  className="text-[10px] font-medium tracking-[2px] uppercase mb-2"
-                  style={{ fontFamily: "var(--font-mono)", color: "var(--agent-profile)" }}
+                  className="text-[10px] font-medium tracking-[2px] uppercase mb-4"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--agent-profile)",
+                  }}
                 >
-                  {label}
+                  Business Profile
                 </div>
-                <div className="text-sm" style={{ color: "var(--text-hint)" }}>
-                  Waiting for your answer...
-                </div>
-              </div>
-            );
-          }
 
-          if (hasAnswer) {
-            return (
-              <div
-                key={label}
-                className="border p-5 mb-3"
-                style={{ background: "var(--white)", borderColor: "var(--bidly-border)" }}
-              >
-                <div
-                  className="text-[10px] font-medium tracking-[2px] uppercase mb-2"
-                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-                >
-                  {label}
+                <div className="mb-4">
+                  <div
+                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Company
+                  </div>
+                  <div
+                    className="text-lg font-medium"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {answers[0]}
+                  </div>
                 </div>
-                <div className="text-[15px] font-medium" style={{ color: "var(--text-primary)" }}>
-                  {answers[i]}
-                </div>
-              </div>
-            );
-          }
 
-          return (
-            <div
-              key={label}
-              className="border border-dashed p-5 mb-3 text-center"
-              style={{ borderColor: "var(--bidly-border)" }}
-            >
-              <div
-                className="text-[10px] tracking-[2px] uppercase"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
-              >
-                {label}
+                <div className="mb-4">
+                  <div
+                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Province
+                  </div>
+                  <div className="text-sm" style={{ color: "var(--text-primary)" }}>
+                    {answers[1]}
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <div
+                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Services & Capabilities
+                  </div>
+                  <div
+                    className="text-sm leading-relaxed"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {answers[2]}
+                  </div>
+                </div>
+
+                <div>
+                  <div
+                    className="text-[10px] tracking-[1.5px] uppercase mb-1"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Scale & Certifications
+                  </div>
+                  <div
+                    className="text-sm leading-relaxed"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {answers[3]}
+                  </div>
+                </div>
               </div>
+
+              <button
+                onClick={() => agent.setActiveAgent("scout")}
+                className="mt-4 w-full px-6 py-3 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  background: "var(--agent-scout)",
+                  color: "var(--white)",
+                  border: "none",
+                }}
+              >
+                Continue to Scout &rarr;
+              </button>
             </div>
-          );
-        })}
+          )}
 
-        {/* Continue button after completion */}
-        {isComplete && (
-          <button
-            onClick={() => agent.setActiveAgent("scout")}
-            className="mt-6 px-6 py-3 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer transition-opacity hover:opacity-80"
-            style={{
-              fontFamily: "var(--font-mono)",
-              background: "var(--agent-scout)",
-              color: "var(--white)",
-              border: "none",
-            }}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Chat Input — hidden after completion */}
+        {!isComplete && (
+          <div
+            className="px-6 py-4 border-t"
+            style={{ borderColor: "var(--border-light)" }}
           >
-            Continue to Scout &rarr;
-          </button>
+            <ChatInput
+              agentId="profile"
+              onSend={handleSend}
+              disabled={isComplete || demoMode}
+            />
+          </div>
         )}
       </div>
     </div>
