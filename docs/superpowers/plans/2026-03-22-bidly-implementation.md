@@ -39,7 +39,7 @@ When prompted: Use App Router = Yes, use `src/` directory = Yes.
 ```bash
 git add -A
 git commit -m "chore: initialize Next.js 14 project"
-git push origin main
+git push origin dev
 ```
 
 Other team members:
@@ -90,10 +90,10 @@ npm install -D csv-parse tsx
 ```bash
 git add -A
 git commit -m "chore: add dependencies - supabase, anthropic, shadcn, fonts"
-git push origin main
+git push origin dev
 ```
 
-Everyone else: `git pull origin main && npm install`
+Everyone else: `git pull origin dev && npm install`
 
 ---
 
@@ -346,7 +346,7 @@ Verify all tables appear in Table Editor.
 ```bash
 git add supabase/migrations/001_initial_schema.sql
 git commit -m "feat: add database schema with pgvector, indexes, and match_tenders RPC"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -458,7 +458,7 @@ Go to Supabase Dashboard → Table Editor → `tenders`. Confirm rows are presen
 ```bash
 git add scripts/seed-tenders.ts
 git commit -m "feat: add tender CSV seeder script"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -620,7 +620,7 @@ with (lists = 22);
 ```bash
 git add src/lib/voyage.ts scripts/embed-tenders.ts
 git commit -m "feat: add Voyage embedding client and tender embedding pipeline"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -1066,7 +1066,7 @@ export default function Home() {
 ```bash
 git add src/lib/types.ts src/lib/agents.ts src/hooks/use-agent.ts src/app/globals.css src/app/layout.tsx src/app/page.tsx
 git commit -m "feat: add design system tokens, types, agent config, layout shell"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -1419,7 +1419,7 @@ Open http://localhost:3000. You should see:
 ```bash
 git add src/components/sidebar.tsx src/components/main-header.tsx src/components/chat-input.tsx src/components/views/
 git commit -m "feat: add sidebar, main header, chat input, and placeholder views"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -1468,7 +1468,7 @@ Verify: sidebar shows Profile active, chat shows first question, typing a respon
 ```bash
 git add src/components/views/profile-view.tsx
 git commit -m "feat: add profile view with chat + card builder"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -1495,7 +1495,7 @@ Use mock tender data initially. "Analyze →" button calls `agent.setSelectedTen
 ```bash
 git add src/components/views/scout-view.tsx
 git commit -m "feat: add scout view with tender dashboard"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -1523,7 +1523,7 @@ Use `agent.selectedTender` for the tender data. AI summary will be wired by Pers
 ```bash
 git add src/components/views/analyst-view.tsx
 git commit -m "feat: add analyst view with RFP analysis cards"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -1550,7 +1550,7 @@ Use mock eligibility data initially.
 ```bash
 git add src/components/views/compliance-view.tsx
 git commit -m "feat: add compliance view with eligibility checklist"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -1577,7 +1577,7 @@ Use mock draft content initially.
 ```bash
 git add src/components/views/writer-view.tsx
 git commit -m "feat: add writer view with bid workspace editor"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -2109,7 +2109,7 @@ export async function POST(request: NextRequest) {
 ```bash
 git add src/lib/ai/ src/app/api/ai/route.ts
 git commit -m "feat: add Claude AI route with tool-use, system prompts, and tool handlers"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -2194,7 +2194,7 @@ export function useChat(agentId: AgentId) {
 ```bash
 git add src/hooks/use-chat.ts
 git commit -m "feat: add useChat hook for AI conversation state"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -2237,7 +2237,7 @@ export function createServerClient() {
 ```bash
 git add src/lib/supabase.ts
 git commit -m "feat: add Supabase client helpers"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -2494,7 +2494,7 @@ export async function POST(request: NextRequest) {
 ```bash
 git add src/app/api/
 git commit -m "feat: add CRUD API routes for profile, tenders, eligibility, drafts, forms"
-git push origin main
+git push origin dev
 ```
 
 ---
@@ -2546,7 +2546,7 @@ Run through the full demo flow:
 ```bash
 git add -A
 git commit -m "feat: wire all views to API routes and AI chat"
-git push origin main
+git push origin dev
 ```
 
 ---
