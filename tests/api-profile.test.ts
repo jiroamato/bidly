@@ -73,6 +73,18 @@ describe("POST /api/profile", () => {
     expect(mockInsert).toHaveBeenCalledWith({ company_name: "New Co" });
   });
 
+  it("returns 400 on malformed JSON body", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not json",
+    });
+    const res = await POST(req as any);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid JSON body");
+  });
+
   it("returns 400 on insert error", async () => {
     mockSingle.mockResolvedValue({
       data: null,
@@ -100,6 +112,25 @@ describe("PUT /api/profile", () => {
     expect(json).toEqual(updated);
     expect(mockUpdate).toHaveBeenCalledWith({ company_name: "Updated Co" });
     expect(mockEq).toHaveBeenCalledWith("id", 1);
+  });
+
+  it("returns 400 when id is missing from body", async () => {
+    const res = await PUT(makeRequest({ company_name: "No ID" }) as any);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("id is required");
+  });
+
+  it("returns 400 on malformed JSON body", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: "not json",
+    });
+    const res = await PUT(req as any);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid JSON body");
   });
 
   it("returns 400 on update error", async () => {

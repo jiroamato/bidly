@@ -53,15 +53,12 @@ describe("GET /api/tenders/[id]", () => {
     expect(mockEq).toHaveBeenCalledWith("id", 7);
   });
 
-  it("passes NaN when id is not numeric", async () => {
-    mockSingle.mockResolvedValue({
-      data: null,
-      error: { message: "invalid input" },
-    });
-
+  it("returns 400 when id is not numeric", async () => {
     const res = await GET(makeRequest() as any, makeParams("abc"));
-    // parseInt("abc") = NaN — edge case, Supabase will error
-    expect(mockEq).toHaveBeenCalledWith("id", NaN);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid tender id");
+    // Should not reach Supabase at all
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 });
