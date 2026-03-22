@@ -1,78 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tender } from "@/lib/types";
 import { ChatInput } from "@/components/chat-input";
 import { AgentState } from "@/hooks/use-agent";
+import { useChat } from "@/hooks/use-chat";
 
 interface ScoutViewProps {
   agent: AgentState;
 }
 
-const MOCK_TENDERS: (Tender & { match_score: number })[] = [
-  {
-    id: 1, reference_number: "PW-2026-0847", solicitation_number: "PW-2026-0847",
-    title: "Water Main Replacement \u2014 City of Toronto",
-    description: "Replacement of aging water mains in downtown core including excavation, pipe installation, and road restoration.",
-    publication_date: "2026-03-01", closing_date: "2026-04-15", status: "Open",
-    procurement_category: "CNST", notice_type: "Tender Notice", procurement_method: "Competitive",
-    selection_criteria: "Lowest price compliant", gsin_codes: [], unspsc_codes: [],
-    regions_of_opportunity: ["Ontario"], regions_of_delivery: ["Ontario"],
-    trade_agreements: ["CFTA"], contracting_entity: "City of Toronto",
-    notice_url: "", attachment_urls: [], match_score: 94,
-  },
-  {
-    id: 2, reference_number: "W8486-26-0293", solicitation_number: "W8486-26-0293",
-    title: "Plumbing Retrofit \u2014 DND Base Petawawa",
-    description: "Complete plumbing retrofit of barracks buildings including fixture replacement and pipe upgrades.",
-    publication_date: "2026-03-05", closing_date: "2026-04-22", status: "Open",
-    procurement_category: "CNST", notice_type: "Tender Notice", procurement_method: "Competitive",
-    selection_criteria: "Best value", gsin_codes: [], unspsc_codes: [],
-    regions_of_opportunity: ["Ontario"], regions_of_delivery: ["Ontario"],
-    trade_agreements: ["CFTA"], contracting_entity: "DND",
-    notice_url: "", attachment_urls: [], match_score: 91,
-  },
-  {
-    id: 3, reference_number: "PEEL-2026-1134", solicitation_number: "PEEL-2026-1134",
-    title: "Storm Sewer Rehabilitation \u2014 Region of Peel",
-    description: "Rehabilitation of storm sewer infrastructure including lining, replacement, and manhole repairs.",
-    publication_date: "2026-03-02", closing_date: "2026-04-10", status: "Open",
-    procurement_category: "CNST", notice_type: "Tender Notice", procurement_method: "Competitive",
-    selection_criteria: "Lowest price compliant", gsin_codes: [], unspsc_codes: [],
-    regions_of_opportunity: ["Ontario"], regions_of_delivery: ["Ontario"],
-    trade_agreements: ["CFTA"], contracting_entity: "Region of Peel",
-    notice_url: "", attachment_urls: [], match_score: 87,
-  },
-  {
-    id: 4, reference_number: "EN578-26-4401", solicitation_number: "EN578-26-4401",
-    title: "HVAC & Plumbing Maintenance \u2014 PSPC Ottawa",
-    description: "Standing offer for HVAC and plumbing maintenance services for federal buildings in the NCR.",
-    publication_date: "2026-03-10", closing_date: "2026-05-01", status: "Open",
-    procurement_category: "SRV", notice_type: "Tender Notice", procurement_method: "Competitive",
-    selection_criteria: "Best value", gsin_codes: [], unspsc_codes: [],
-    regions_of_opportunity: ["Ontario", "Quebec"], regions_of_delivery: ["Ontario", "Quebec"],
-    trade_agreements: ["CFTA"], contracting_entity: "PSPC",
-    notice_url: "", attachment_urls: [], match_score: 78,
-  },
-  {
-    id: 5, reference_number: "HAM-2026-0562", solicitation_number: "HAM-2026-0562",
-    title: "Fire Hydrant Installation Program \u2014 City of Hamilton",
-    description: "Installation of new fire hydrants and connection to existing water distribution network.",
-    publication_date: "2026-03-08", closing_date: "2026-04-28", status: "Open",
-    procurement_category: "CNST", notice_type: "Tender Notice", procurement_method: "Competitive",
-    selection_criteria: "Lowest price compliant", gsin_codes: [], unspsc_codes: [],
-    regions_of_opportunity: ["Ontario"], regions_of_delivery: ["Ontario"],
-    trade_agreements: ["CFTA"], contracting_entity: "City of Hamilton",
-    notice_url: "", attachment_urls: [], match_score: 72,
-  },
-];
+type TenderWithScore = Tender & { match_score: number };
 
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
 export function ScoutView({ agent }: ScoutViewProps) {
+  const { sendMessage } = useChat("scout");
   const [activeFilter, setActiveFilter] = useState("All Matches");
+  const [tenders, setTenders] = useState<TenderWithScore[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_TENDERS.filter((t) => {
+  useEffect(() => {
+    fetch("/api/tenders?limit=50")
+      .then((r) => r.json())
+      .then((data: Tender[]) => {
+        // Add match_score (placeholder until AI search is wired)
+        const scored = data.map((t, i) => ({
+          ...t,
+          match_score: Math.max(95 - i * 5, 40),
+        }));
+        setTenders(scored);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = tenders.filter((t) => {
     if (activeFilter === "High Match") return t.match_score >= 80;
     if (activeFilter === "Closing Soon") {
       const d = new Date(t.closing_date);
@@ -85,13 +48,15 @@ export function ScoutView({ agent }: ScoutViewProps) {
     return true;
   });
 
-  const highMatch = MOCK_TENDERS.filter((t) => t.match_score >= 80).length;
-  const closingSoon = MOCK_TENDERS.filter((t) => {
+  const highMatch = tenders.filter((t) => t.match_score >= 80).length;
+  const closingSoon = tenders.filter((t) => {
     const d = new Date(t.closing_date);
     const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     return diff <= 14;
   }).length;
-  const avgScore = Math.round(MOCK_TENDERS.reduce((s, t) => s + t.match_score, 0) / MOCK_TENDERS.length);
+  const avgScore = tenders.length > 0
+    ? Math.round(tenders.reduce((s, t) => s + t.match_score, 0) / tenders.length)
+    : 0;
 
   const handleAnalyze = (tender: Tender) => {
     agent.setSelectedTender(tender);
@@ -112,6 +77,22 @@ export function ScoutView({ agent }: ScoutViewProps) {
         >
           Based on your profile{agent.profile ? `: ${agent.profile.capabilities || agent.profile.company_name}, ${agent.profile.province}` : ""}
         </p>
+
+        {loading && (
+          <div className="mt-8 text-center py-12" style={{ color: "var(--text-muted)" }}>
+            <div className="text-[11px] tracking-[2px] uppercase" style={{ fontFamily: "var(--font-mono)" }}>
+              Loading tenders...
+            </div>
+          </div>
+        )}
+
+        {!loading && tenders.length === 0 && (
+          <div className="mt-8 text-center py-12" style={{ color: "var(--text-muted)" }}>
+            <div className="text-[11px] tracking-[2px] uppercase" style={{ fontFamily: "var(--font-mono)" }}>
+              No matching tenders found. Try broadening your search criteria.
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex gap-0 mt-6 mb-6">
@@ -137,7 +118,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-8">
           {[
-            { label: "Total Matches", value: MOCK_TENDERS.length.toString(), color: "var(--agent-scout)", detail: "from 312 open tenders" },
+            { label: "Total Matches", value: tenders.length.toString(), color: "var(--agent-scout)", detail: `from ${tenders.length} loaded tenders` },
             { label: "High Match (>80%)", value: highMatch.toString(), color: "var(--text-primary)" },
             { label: "Closing Soon", value: closingSoon.toString(), color: "var(--accent-red)" },
             { label: "Avg Match Score", value: `${avgScore}%`, color: "var(--text-primary)" },
@@ -265,7 +246,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
       </div>
 
       {/* Chat Input */}
-      <ChatInput agentId="scout" onSend={() => {}} disabled />
+      <ChatInput agentId="scout" onSend={sendMessage} />
     </div>
   );
 }

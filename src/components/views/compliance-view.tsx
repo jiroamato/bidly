@@ -2,6 +2,7 @@
 
 import { ChatInput } from "@/components/chat-input";
 import { AgentState } from "@/hooks/use-agent";
+import { useChat } from "@/hooks/use-chat";
 
 interface ComplianceViewProps {
   agent: AgentState;
@@ -62,6 +63,7 @@ const STATUS_STYLES: Record<CheckStatus, { icon: string; bg: string; color: stri
 };
 
 export function ComplianceView({ agent }: ComplianceViewProps) {
+  const { sendMessage } = useChat("compliance");
   const tender = agent.selectedTender;
   const totalItems = MOCK_SECTIONS.reduce((a, s) => a + s.items.length, 0);
   const passedItems = MOCK_SECTIONS.reduce((a, s) => a + s.items.filter((i) => i.status === "pass").length, 0);
@@ -239,7 +241,7 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
         })}
       </div>
 
-      <ChatInput agentId="compliance" onSend={() => {}} disabled />
+      <ChatInput agentId="compliance" onSend={sendMessage} />
     </div>
   );
 }

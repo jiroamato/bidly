@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { AgentState } from "@/hooks/use-agent";
+import { useChat } from "@/hooks/use-chat";
 
 interface WriterViewProps {
   agent: AgentState;
@@ -74,6 +75,7 @@ const STATUS_ICONS: Record<SectionStatus, { icon: string; color: string }> = {
 };
 
 export function WriterView({ agent }: WriterViewProps) {
+  const { sendMessage } = useChat("writer");
   const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
   const content = MOCK_CONTENT[activeSection];
   const sectionConfig = SECTIONS.find((s) => s.id === activeSection)!;
@@ -342,7 +344,7 @@ export function WriterView({ agent }: WriterViewProps) {
 
         {/* Chat Input */}
         <div className="flex-shrink-0">
-          <ChatInput agentId="writer" onSend={() => {}} disabled />
+          <ChatInput agentId="writer" onSend={sendMessage} />
         </div>
       </div>
     </div>
