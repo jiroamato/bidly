@@ -19,8 +19,8 @@ async function main() {
   const filtered = filterTenders(records);
   console.log(`Filtered to ${filtered.length} active tenders`);
 
-  // Take up to 500 tenders for hackathon
-  const tenders = filtered.slice(0, 500);
+  // Take up to 1000 tenders
+  const tenders = filtered.slice(0, 1000);
 
   // Batch insert
   for (let i = 0; i < tenders.length; i += BATCH_SIZE) {
