@@ -9,13 +9,8 @@ interface ProfileViewProps {
   agent: AgentState;
 }
 
-const QUESTIONS = [
-  "Welcome to Bidly! I'll help you find and bid on government contracts. First, what's your company name?",
-  "Great! What province are you based in?",
-  "What services does your company provide? (e.g., IT consulting, construction, environmental services)",
-  "What's your typical project size range and do you have certifications like WSIB or bonding?",
-  "Here's your profile — does everything look right? Type 'yes' to confirm or tell me what to change.",
-];
+const INITIAL_MESSAGE =
+  "Welcome to Bidly! I'll help you find and bid on government contracts. First, what's your company name?";
 
 const STEP_LABELS = ["Company", "Province", "Services", "Certifications", "Confirm"];
 
@@ -25,12 +20,34 @@ const PROVINCE_OPTIONS = [
   "Newfoundland", "PEI", "Yukon", "NWT", "Nunavut",
 ];
 
-const DEMO_ANSWERS = [
-  "Maple Facility Services Inc.",
-  "Saskatchewan",
-  "Commercial janitorial and facility cleaning services, HVAC cleaning, general office cleaning, floor care, window cleaning, post-construction cleanup",
-  "Typical contracts $50K-$500K. Bonded, WSIB equivalent certified, $2M liability insurance. Government facility experience including RCMP detachments.",
-  "Yes, looks great!",
+/* ---------- DEMO DATA ---------- */
+
+const DEMO_PAIRS: { answer: string; nextQuestion: string }[] = [
+  {
+    answer: "Maple Facility Services Inc.",
+    nextQuestion: "Great! What province are you based in?",
+  },
+  {
+    answer: "Saskatchewan",
+    nextQuestion:
+      "What services does your company provide? (e.g., IT consulting, construction, environmental services)",
+  },
+  {
+    answer:
+      "Commercial janitorial and facility cleaning services, HVAC cleaning, general office cleaning, floor care, window cleaning, post-construction cleanup",
+    nextQuestion:
+      "What's your typical project size range and do you have certifications like WSIB or bonding?",
+  },
+  {
+    answer:
+      "Typical contracts $50K-$500K. Bonded, WSIB equivalent certified, $2M liability insurance. Government facility experience including RCMP detachments.",
+    nextQuestion:
+      "Here's your profile — does everything look right? Type 'yes' to confirm or tell me what to change.",
+  },
+  {
+    answer: "Yes, looks great!",
+    nextQuestion: "", // triggers save
+  },
 ];
 
 const DEMO_PROFILE_PAYLOAD = {
@@ -41,125 +58,233 @@ const DEMO_PROFILE_PAYLOAD = {
   capabilities:
     "Commercial janitorial and facility cleaning services. HVAC system cleaning, general office cleaning, floor care, window cleaning, post-construction cleanup. Government facility experience including RCMP detachments. Typical contracts $50K-$500K. Bonded, WSIB equivalent certified, $2M liability insurance.",
   keywords: [
-    "janitorial",
-    "cleaning",
-    "HVAC cleaning",
-    "facility maintenance",
-    "custodial",
-    "commercial cleaning",
-    "government facilities",
+    "janitorial", "cleaning", "HVAC cleaning", "facility maintenance",
+    "custodial", "commercial cleaning", "government facilities",
   ],
 };
 
+/* ---------- PARSE CAPABILITIES INTO SECTIONS ---------- */
+
+function parseCapabilities(text: string) {
+  const sentences = text
+    .split(/\.\s+/)
+    .map((s) => s.replace(/\.$/, "").trim())
+    .filter(Boolean);
+
+  const services: string[] = [];
+  const experience: string[] = [];
+  const certifications: string[] = [];
+  const contractRange: string[] = [];
+
+  for (const s of sentences) {
+    const lower = s.toLowerCase();
+    if (/\$[\d,]+k?|\bcontract|\bbudget|\bproject size/i.test(lower)) {
+      contractRange.push(s);
+    } else if (/certif|bonded|bonding|insur|wsib|liability|licensed/i.test(lower)) {
+      certifications.push(s);
+    } else if (/experience|government|federal|municipal|provincial|rcmp|client/i.test(lower)) {
+      experience.push(s);
+    } else {
+      services.push(s);
+    }
+  }
+
+  return { services, experience, certifications, contractRange };
+}
+
+/* ---------- COMPONENT ---------- */
+
 export function ProfileView({ agent }: ProfileViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: QUESTIONS[0], timestamp: Date.now() },
+    { role: "assistant", content: INITIAL_MESSAGE, timestamp: Date.now() },
   ]);
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Demo state
   const [demoMode, setDemoMode] = useState(false);
-  const [demoWaiting, setDemoWaiting] = useState(false);
+  const [demoStep, setDemoStep] = useState(0);
+  const lastDemoStep = useRef(-1);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const demoModeRef = useRef(false);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, showProfile]);
+  }, [messages, showProfile, isTyping]);
 
-  const handleSend = useCallback(
-    (text: string) => {
-      if (isComplete) return;
+  // Step progress based on user message count
+  const userMessageCount = messages.filter((m) => m.role === "user").length;
+  const completedSteps = Math.min(userMessageCount, STEP_LABELS.length);
 
-      const newAnswers = [...answers, text];
-      setAnswers(newAnswers);
+  /* ---------- SAVE PROFILE ---------- */
 
-      const userMsg: ChatMessage = { role: "user", content: text, timestamp: Date.now() };
-      setMessages((prev) => [...prev, userMsg]);
-
-      const nextStep = step + 1;
-
-      if (nextStep < QUESTIONS.length) {
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: QUESTIONS[nextStep], timestamp: Date.now() },
-          ]);
-          setStep(nextStep);
-        }, 500);
+  const saveProfile = useCallback(
+    async (payload: Record<string, unknown>) => {
+      try {
+        const res = await fetch("/api/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const saved = await res.json();
+        if (res.ok && saved.id) {
+          agent.setProfile(saved);
+        } else {
+          agent.setProfile({
+            ...payload,
+            id: 0,
+            created_at: new Date().toISOString(),
+          } as unknown as BusinessProfile);
+        }
+      } catch {
+        agent.setProfile({
+          ...payload,
+          id: 0,
+          created_at: new Date().toISOString(),
+        } as unknown as BusinessProfile);
       }
 
-      if (nextStep === QUESTIONS.length) {
-        setTimeout(async () => {
-          const profileData = {
-            company_name: newAnswers[0] || "My Company",
-            naics_codes: [] as string[],
-            location: newAnswers[1] || "Ontario",
-            province: newAnswers[1] || "Ontario",
-            capabilities: newAnswers[2] || "",
-            keywords: (newAnswers[2] || "")
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-          };
-
-          const payload = demoModeRef.current ? DEMO_PROFILE_PAYLOAD : profileData;
-
-          try {
-            const res = await fetch("/api/profile", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
-
-            const saved = await res.json();
-            if (res.ok && saved.id) {
-              agent.setProfile(saved);
-            } else {
-              agent.setProfile({
-                ...payload,
-                id: 0,
-                created_at: new Date().toISOString(),
-              } as BusinessProfile);
-            }
-          } catch {
-            agent.setProfile({
-              ...payload,
-              id: 0,
-              created_at: new Date().toISOString(),
-            } as BusinessProfile);
-          }
-
-          setIsComplete(true);
-          agent.completeAgent("profile");
-
-          setTimeout(() => setShowProfile(true), 400);
-        }, 600);
-      }
+      setIsComplete(true);
+      agent.completeAgent("profile");
+      setTimeout(() => setShowProfile(true), 400);
     },
-    [answers, step, isComplete, agent]
+    [agent]
   );
 
-  // Re-enable the "Next" button once the next question appears
+  /* ---------- DEMO MODE: auto-advance with slow pacing ---------- */
+
   useEffect(() => {
-    if (demoMode && demoWaiting) {
-      setDemoWaiting(false);
+    if (!demoMode || isComplete) return;
+    if (lastDemoStep.current >= demoStep) return;
+    lastDemoStep.current = demoStep;
+
+    if (demoStep >= DEMO_PAIRS.length) return;
+    const pair = DEMO_PAIRS[demoStep];
+
+    // Pause before user answer appears
+    const userTimer = setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: pair.answer, timestamp: Date.now() },
+      ]);
+
+      if (pair.nextQuestion) {
+        // Typing indicator after a pause
+        setTimeout(() => setIsTyping(true), 600);
+        // Then bot response
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: pair.nextQuestion, timestamp: Date.now() },
+          ]);
+          setDemoStep((s) => s + 1);
+        }, 2000);
+      } else {
+        // Final step — typing then save
+        setTimeout(() => setIsTyping(true), 600);
+        setTimeout(() => {
+          setIsTyping(false);
+          saveProfile(DEMO_PROFILE_PAYLOAD);
+        }, 1800);
+      }
+    }, 1200);
+
+    return () => clearTimeout(userTimer);
+  }, [demoMode, demoStep, isComplete, saveProfile]);
+
+  /* ---------- NORMAL MODE: AI chatbot ---------- */
+
+  const handleSend = useCallback(
+    async (text: string) => {
+      if (isComplete || demoMode) return;
+
+      const userMsg: ChatMessage = { role: "user", content: text, timestamp: Date.now() };
+      const updated = [...messagesRef.current, userMsg];
+      setMessages(updated);
+      setIsTyping(true);
+
+      try {
+        const res = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agentId: "profile", messages: updated }),
+        });
+
+        if (!res.ok) throw new Error("AI request failed");
+        const data = await res.json();
+        setIsTyping(false);
+
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.content, timestamp: Date.now() },
+        ]);
+
+        // After 4+ user messages and a confirmation word, extract profile
+        const count = updated.filter((m) => m.role === "user").length;
+        if (count >= 4) {
+          const lower = text.toLowerCase();
+          if (
+            lower.includes("yes") ||
+            lower.includes("confirm") ||
+            lower.includes("looks good") ||
+            lower.includes("correct") ||
+            lower.includes("great")
+          ) {
+            await extractAndSaveProfile(updated);
+          }
+        }
+      } catch {
+        setIsTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "I had trouble processing that. Could you try again?",
+            timestamp: Date.now(),
+          },
+        ]);
+      }
+    },
+    [isComplete, demoMode, saveProfile]
+  );
+
+  const extractAndSaveProfile = async (conversation: ChatMessage[]) => {
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "profile",
+          messages: [
+            ...conversation,
+            {
+              role: "user",
+              content:
+                'Extract the company profile from our conversation as JSON: {"company_name":"","naics_codes":[],"location":"","province":"","capabilities":"","keywords":[]}. Return ONLY valid JSON.',
+              timestamp: Date.now(),
+            },
+          ],
+        }),
+      });
+      const data = await res.json();
+      const jsonStr = data.content
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
+      const profileData = JSON.parse(jsonStr);
+      await saveProfile(profileData);
+    } catch {
+      // Extraction failed — user can still chat
     }
-  }, [step, demoMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleDemoClick = () => {
-    demoModeRef.current = true;
-    setDemoMode(true);
   };
 
-  const handleDemoNext = () => {
-    if (demoWaiting || isComplete) return;
-    setDemoWaiting(true);
-    handleSend(DEMO_ANSWERS[step]);
-  };
+  const handleDemoClick = () => setDemoMode(true);
 
-  const completedSteps = Math.min(answers.length, STEP_LABELS.length);
+  /* ---------- RENDER ---------- */
 
   return (
     <div className="flex flex-col flex-1 h-full" style={{ background: "var(--bg)" }}>
@@ -190,7 +315,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
                 Tell me about your business to get started
               </p>
             </div>
-            {!demoMode && !isComplete && answers.length === 0 && (
+            {!demoMode && !isComplete && userMessageCount === 0 && (
               <button
                 onClick={handleDemoClick}
                 className="text-[10px] tracking-[1px] uppercase px-4 py-2 border transition-all hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)] hover:shadow-sm mt-1"
@@ -225,7 +350,9 @@ export function ProfileView({ agent }: ProfileViewProps) {
                             ? "var(--agent-profile)"
                             : "var(--border-light)",
                         opacity: isCurrent ? 0.5 : 1,
-                        boxShadow: isCurrent ? "0 0 0 3px rgba(230, 126, 34, 0.15)" : "none",
+                        boxShadow: isCurrent
+                          ? "0 0 0 3px rgba(230, 126, 34, 0.15)"
+                          : "none",
                       }}
                     />
                     <span
@@ -270,7 +397,6 @@ export function ProfileView({ agent }: ProfileViewProps) {
               }}
             >
               {msg.role === "assistant" ? (
-                /* Assistant message */
                 <div className="max-w-[680px] flex gap-4">
                   <div
                     className="w-0.5 flex-shrink-0 mt-1"
@@ -297,38 +423,37 @@ export function ProfileView({ agent }: ProfileViewProps) {
                       {msg.content}
                     </div>
 
-                    {/* Province options */}
-                    {step === 1 && i === messages.length - 1 && !demoMode && (
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        {PROVINCE_OPTIONS.map((prov) => (
-                          <button
-                            key={prov}
-                            onClick={() => handleSend(prov)}
-                            className="text-[11px] tracking-[0.5px] px-4 py-2.5 border transition-all hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)] hover:shadow-sm"
-                            style={{
-                              fontFamily: "var(--font-mono)",
-                              borderColor: "var(--bidly-border)",
-                              background: "var(--white)",
-                              color: "var(--text-secondary)",
-                              cursor: "pointer",
-                            }}
-                          >
-                            {prov}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {/* Province buttons — normal mode only, step 1 */}
+                    {!demoMode &&
+                      completedSteps === 1 &&
+                      i === messages.length - 1 &&
+                      !isTyping && (
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          {PROVINCE_OPTIONS.map((prov) => (
+                            <button
+                              key={prov}
+                              onClick={() => handleSend(prov)}
+                              className="text-[11px] tracking-[0.5px] px-4 py-2.5 border transition-all hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)] hover:shadow-sm"
+                              style={{
+                                fontFamily: "var(--font-mono)",
+                                borderColor: "var(--bidly-border)",
+                                background: "var(--white)",
+                                color: "var(--text-secondary)",
+                                cursor: "pointer",
+                              }}
+                            >
+                              {prov}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 </div>
               ) : (
-                /* User message */
                 <div className="max-w-[520px]">
                   <div
                     className="text-[9px] tracking-[2px] uppercase mb-2 text-right"
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color: "var(--text-muted)",
-                    }}
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
                   >
                     You
                   </div>
@@ -347,13 +472,41 @@ export function ProfileView({ agent }: ProfileViewProps) {
             </div>
           ))}
 
+          {/* Typing indicator */}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="flex gap-4">
+                <div
+                  className="w-0.5 flex-shrink-0"
+                  style={{
+                    background: "var(--agent-profile)",
+                    borderRadius: 1,
+                    minHeight: 20,
+                  }}
+                />
+                <div className="flex items-center gap-1.5 py-3 px-1">
+                  {[0, 0.2, 0.4].map((delay) => (
+                    <div
+                      key={delay}
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{
+                        background: "var(--agent-profile)",
+                        animation: `typingDot 1.4s infinite`,
+                        animationDelay: `${delay}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Profile Card */}
           {showProfile && agent.profile && (
             <div
               className="pt-4"
               style={{ animation: "profileReveal 0.6s ease-out forwards" }}
             >
-              {/* Card */}
               <div
                 className="overflow-hidden"
                 style={{
@@ -361,11 +514,9 @@ export function ProfileView({ agent }: ProfileViewProps) {
                   border: "1px solid var(--bidly-border)",
                 }}
               >
-                {/* Orange top accent */}
                 <div className="h-1" style={{ background: "var(--agent-profile)" }} />
 
                 <div className="p-8">
-                  {/* Header row */}
                   <div className="flex items-start justify-between mb-6">
                     <div>
                       <div
@@ -388,15 +539,11 @@ export function ProfileView({ agent }: ProfileViewProps) {
                       >
                         {agent.profile.company_name}
                       </div>
-                      <div
-                        className="text-sm"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
+                      <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
                         {agent.profile.location || agent.profile.province}
                       </div>
                     </div>
 
-                    {/* NAICS badges */}
                     {agent.profile.naics_codes.length > 0 && (
                       <div className="flex gap-2 mt-1">
                         {agent.profile.naics_codes.map((code) => (
@@ -422,84 +569,111 @@ export function ProfileView({ agent }: ProfileViewProps) {
                     style={{ borderBottom: "1px solid var(--border-light)" }}
                   />
 
-                  {/* Two column: Capabilities + Details */}
-                  <div className="grid grid-cols-[1fr_200px] gap-8">
-                    {/* Capabilities */}
-                    <div>
+                  {(() => {
+                    const parsed = parseCapabilities(agent.profile.capabilities);
+                    const SectionLabel = ({ children }: { children: React.ReactNode }) => (
                       <div
-                        className="text-[9px] tracking-[2px] uppercase mb-3"
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          color: "var(--text-muted)",
-                        }}
+                        className="text-[9px] tracking-[2px] uppercase mb-2"
+                        style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
                       >
-                        Services & Capabilities
+                        {children}
                       </div>
-                      <div
-                        className="text-[14px] leading-[1.8]"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {agent.profile.capabilities}
-                      </div>
-                    </div>
-
-                    {/* Right column: Province + Keywords */}
-                    <div
-                      className="pl-8"
-                      style={{ borderLeft: "1px solid var(--border-light)" }}
-                    >
-                      <div className="mb-5">
-                        <div
-                          className="text-[9px] tracking-[2px] uppercase mb-2"
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            color: "var(--text-muted)",
-                          }}
-                        >
-                          Province
-                        </div>
-                        <div
-                          className="text-sm font-medium"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {agent.profile.province}
-                        </div>
-                      </div>
-
-                      {agent.profile.keywords.length > 0 && (
-                        <div>
-                          <div
-                            className="text-[9px] tracking-[2px] uppercase mb-2"
-                            style={{
-                              fontFamily: "var(--font-mono)",
-                              color: "var(--text-muted)",
-                            }}
-                          >
-                            Keywords
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {agent.profile.keywords.map((kw) => (
-                              <span
-                                key={kw}
-                                className="text-[10px] px-2 py-0.5"
-                                style={{
-                                  fontFamily: "var(--font-mono)",
-                                  background: "var(--bg)",
-                                  color: "var(--text-secondary)",
-                                }}
+                    );
+                    return (
+                      <div className="grid grid-cols-[1fr_220px] gap-8">
+                        {/* Left column */}
+                        <div className="space-y-5">
+                          {parsed.services.length > 0 && (
+                            <div>
+                              <SectionLabel>Core Services</SectionLabel>
+                              <div
+                                className="text-[14px] leading-[1.8]"
+                                style={{ color: "var(--text-primary)" }}
                               >
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
+                                {parsed.services.join(". ")}.
+                              </div>
+                            </div>
+                          )}
+
+                          {parsed.experience.length > 0 && (
+                            <div>
+                              <SectionLabel>Experience</SectionLabel>
+                              <div
+                                className="text-[14px] leading-[1.8]"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {parsed.experience.join(". ")}.
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
+
+                        {/* Right column */}
+                        <div
+                          className="pl-8 space-y-5"
+                          style={{ borderLeft: "1px solid var(--border-light)" }}
+                        >
+                          <div>
+                            <SectionLabel>Province</SectionLabel>
+                            <div
+                              className="text-sm font-medium"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {agent.profile.province}
+                            </div>
+                          </div>
+
+                          {parsed.contractRange.length > 0 && (
+                            <div>
+                              <SectionLabel>Contract Range</SectionLabel>
+                              <div
+                                className="text-sm"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {parsed.contractRange.join(". ")}.
+                              </div>
+                            </div>
+                          )}
+
+                          {parsed.certifications.length > 0 && (
+                            <div>
+                              <SectionLabel>Certifications</SectionLabel>
+                              <div
+                                className="text-sm leading-relaxed"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {parsed.certifications.join(". ")}.
+                              </div>
+                            </div>
+                          )}
+
+                          {agent.profile.keywords.length > 0 && (
+                            <div>
+                              <SectionLabel>Keywords</SectionLabel>
+                              <div className="flex flex-wrap gap-1.5">
+                                {agent.profile.keywords.map((kw) => (
+                                  <span
+                                    key={kw}
+                                    className="text-[10px] px-2 py-0.5"
+                                    style={{
+                                      fontFamily: "var(--font-mono)",
+                                      background: "var(--bg)",
+                                      color: "var(--text-secondary)",
+                                    }}
+                                  >
+                                    {kw}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
-              {/* Continue button */}
               <button
                 onClick={() => agent.setActiveAgent("scout")}
                 className="mt-5 w-full px-6 py-4 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer transition-all hover:opacity-90"
@@ -519,35 +693,18 @@ export function ProfileView({ agent }: ProfileViewProps) {
         </div>
       </div>
 
-      {/* Input — pinned to bottom */}
+      {/* Bottom bar — hidden after completion */}
       {!isComplete && (
         <div
           className="flex-shrink-0 border-t"
           style={{ background: "var(--white)", borderColor: "var(--border-light)" }}
         >
           <div className="max-w-[860px] mx-auto px-10 py-5">
-            {demoMode ? (
-              <button
-                onClick={handleDemoNext}
-                disabled={demoWaiting}
-                className="w-full flex items-center justify-center gap-3 py-4 text-[11px] font-semibold tracking-[1.5px] uppercase transition-all cursor-pointer"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  background: demoWaiting ? "var(--border-light)" : "var(--agent-profile)",
-                  color: demoWaiting ? "var(--text-muted)" : "var(--white)",
-                  border: "none",
-                  opacity: demoWaiting ? 0.6 : 1,
-                }}
-              >
-                {demoWaiting ? "..." : "Next \u2192"}
-              </button>
-            ) : (
-              <ChatInput
-                agentId="profile"
-                onSend={handleSend}
-                disabled={isComplete}
-              />
-            )}
+            <ChatInput
+              agentId="profile"
+              onSend={handleSend}
+              disabled={isTyping || demoMode}
+            />
           </div>
         </div>
       )}

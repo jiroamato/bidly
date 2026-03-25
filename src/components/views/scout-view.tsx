@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Tender } from "@/lib/types";
-import { ChatInput } from "@/components/chat-input";
+import { ChatPanel } from "@/components/chat-panel";
 import { AgentState } from "@/hooks/use-agent";
-import { useChat } from "@/hooks/use-chat";
 
 interface ScoutViewProps {
   agent: AgentState;
@@ -15,7 +14,6 @@ type TenderWithScore = Tender & { match_score: number };
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
 export function ScoutView({ agent }: ScoutViewProps) {
-  const { sendMessage } = useChat("scout");
   const [activeFilter, setActiveFilter] = useState("All Matches");
   const [tenders, setTenders] = useState<TenderWithScore[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,11 +22,20 @@ export function ScoutView({ agent }: ScoutViewProps) {
     fetch("/api/tenders?limit=50")
       .then((r) => r.json())
       .then((data: Tender[]) => {
-        // Add match_score (placeholder until AI search is wired)
-        const scored = data.map((t, i) => ({
-          ...t,
-          match_score: Math.max(95 - i * 5, 40),
-        }));
+        // Score tenders by keyword relevance to demo profile
+        const BOOST_KEYWORDS = [
+          "rcmp", "janitorial", "cleaning", "custodial", "facility",
+          "maintenance", "housekeeping", "sanitation", "detachment",
+        ];
+        const scored = data.map((t) => {
+          const text = `${t.title} ${t.description} ${t.contracting_entity}`.toLowerCase();
+          const hits = BOOST_KEYWORDS.filter((kw) => text.includes(kw)).length;
+          // RCMP + janitorial/cleaning combo gets top score
+          const isRcmpJanitorial = text.includes("rcmp") && (text.includes("janitorial") || text.includes("cleaning"));
+          const score = isRcmpJanitorial ? 99 : hits >= 2 ? 97 : hits === 1 ? 88 : Math.floor(40 + Math.random() * 30);
+          return { ...t, match_score: score };
+        });
+        scored.sort((a, b) => b.match_score - a.match_score);
         setTenders(scored);
       })
       .catch(console.error)
@@ -65,7 +72,8 @@ export function ScoutView({ agent }: ScoutViewProps) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col flex-1 h-full">
+      <div className="flex-1 overflow-y-auto min-h-0">
       <div className="px-10 py-8">
         {/* Title */}
         <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 400 }}>
@@ -244,9 +252,10 @@ export function ScoutView({ agent }: ScoutViewProps) {
           })}
         </div>
       </div>
+      </div>
 
-      {/* Chat Input */}
-      <ChatInput agentId="scout" onSend={sendMessage} />
+      {/* Chat Panel */}
+      <ChatPanel agentId="scout" selectedTender={agent.selectedTender} profile={agent.profile} />
     </div>
   );
 }
