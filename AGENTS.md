@@ -8,6 +8,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Git Workflow
 
+**IMPORTANT**: Always branch from dev when modifying any code and never directly modify `dev` or `main` branches.
+
 ### Branch Naming (Semantic Feature Branches)
 - `feat/<description>` — new features
 - `fix/<description>` — bug fixes
