@@ -43,7 +43,7 @@ export async function handleToolCall(
 }
 
 async function searchTenders(input: Record<string, any>): Promise<string> {
-  const { query, category, region, limit = 20 } = input;
+  const { query, category, region, limit = 50 } = input;
 
   if (query) {
     // Vector similarity search

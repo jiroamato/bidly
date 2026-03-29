@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const BATCH_SIZE = 20; // Voyage free tier: max ~128 texts per call, keep small
+const BATCH_SIZE = 200; // Increased for faster embedding of larger datasets
 
 async function main() {
   // Get IDs of tenders that already have embeddings

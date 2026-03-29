@@ -5,8 +5,8 @@ export async function GET(request: NextRequest) {
   const supabase = createServerClient();
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
-  const parsedLimit = parseInt(searchParams.get("limit") || "50");
-  const limit = Number.isNaN(parsedLimit) ? 50 : parsedLimit;
+  const parsedLimit = parseInt(searchParams.get("limit") || "200");
+  const limit = Number.isNaN(parsedLimit) ? 200 : parsedLimit;
 
   let query = supabase
     .from("tenders")
