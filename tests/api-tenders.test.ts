@@ -34,7 +34,7 @@ describe("GET /api/tenders", () => {
     expect(json).toEqual(tenders);
     expect(mockFrom).toHaveBeenCalledWith("tenders");
     expect(mockOrder).toHaveBeenCalledWith("closing_date", { ascending: true });
-    expect(mockLimit).toHaveBeenCalledWith(50);
+    expect(mockLimit).toHaveBeenCalledWith(200);
   });
 
   it("applies custom limit from query param", async () => {
