@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { AgentId, ChatMessage } from "@/lib/types";
 
-export function useChat(agentId: AgentId) {
+export function useChat(agentId: AgentId, profileId?: number, tenderId?: number) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +12,7 @@ export function useChat(agentId: AgentId) {
   messagesRef.current = messages;
 
   const sendMessage = useCallback(
-    async (content: string, profileContext?: string) => {
+    async (content: string) => {
       setError(null);
       const userMessage: ChatMessage = {
         role: "user",
@@ -31,7 +31,8 @@ export function useChat(agentId: AgentId) {
           body: JSON.stringify({
             agentId,
             messages: updatedMessages,
-            profileContext,
+            profileId,
+            tenderId,
           }),
         });
 
@@ -53,7 +54,7 @@ export function useChat(agentId: AgentId) {
         setIsLoading(false);
       }
     },
-    [agentId]
+    [agentId, profileId, tenderId]
   );
 
   const addInitialMessage = useCallback((content: string) => {
