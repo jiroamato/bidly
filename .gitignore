@@ -4,3 +4,6 @@ node_modules/
 .next/
 docs/superpowers/
 .superpowers/
+.claude/
+AGENTS.md
+CLAUDE.md
