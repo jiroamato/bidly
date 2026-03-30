@@ -71,7 +71,7 @@ Add explicit columns:
 | Column | Type | Purpose |
 |--------|------|---------|
 | `insurance_amount` | `text` | e.g., "$2M commercial liability" |
-| `bonding_limit` | `text` | e.g., "$500K" |
+| `bonding_limit` | `integer` | Bonding capacity in dollars |
 | `certifications` | `text[]` | e.g., `["WSIB", "ISO 9001"]` |
 | `years_in_business` | `integer` | |
 | `past_gov_experience` | `text` | Free text description |
