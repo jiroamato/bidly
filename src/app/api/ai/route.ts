@@ -10,16 +10,23 @@ const anthropic = new Anthropic();
 
 export async function POST(request: NextRequest) {
   try {
-    const { agentId, messages, profileId, tenderId } = (await request.json()) as {
+    const { agentId, messages, profileId, tenderId, profileContext } = (await request.json()) as {
       agentId: AgentId;
       messages: ChatMessage[];
       profileId?: number;
       tenderId?: number;
+      profileContext?: string; // Legacy: still accepted from old frontend, removed in Workload 2
     };
 
-    // Build context server-side from Supabase
-    const context = await buildAgentContext(agentId, profileId || 0, tenderId);
-    const contextString = formatContextForPrompt(context);
+    // Build context server-side from Supabase when profileId is provided;
+    // fall back to legacy profileContext string from old frontend
+    let contextString = "";
+    if (profileId) {
+      const context = await buildAgentContext(agentId, profileId, tenderId);
+      contextString = formatContextForPrompt(context);
+    } else if (profileContext) {
+      contextString = profileContext;
+    }
 
     // Filter tools to only those available for this agent
     const allowedTools = AGENT_TOOLS[agentId] || [];

@@ -1,12 +1,12 @@
 import { createServerClient } from "@/lib/supabase";
-import { AgentId } from "@/lib/types";
+import type { AgentId, BusinessProfile, Tender, TenderSelection, TenderAnalysis, EligibilityCheck } from "@/lib/types";
 
 export interface AgentContext {
-  profile?: any;
-  tender?: any;
-  matchContext?: any;
-  analysis?: any;
-  compliance?: any;
+  profile?: BusinessProfile | null;
+  tender?: Tender | null;
+  matchContext?: TenderSelection | null;
+  analysis?: TenderAnalysis | null;
+  compliance?: EligibilityCheck | null;
 }
 
 // What each agent needs from Supabase

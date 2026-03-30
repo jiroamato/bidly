@@ -61,7 +61,7 @@ async function searchTenders(input: Record<string, any>): Promise<string> {
 
   let q = supabase.from("tenders").select("*").order("closing_date", { ascending: true }).limit(limit);
 
-  if (query) q = q.ilike("title", `%${query}%`);
+  if (query) q = q.or(`title.ilike.%${query}%,description.ilike.%${query}%`);
   if (category) q = q.eq("procurement_category", category);
   if (region) q = q.contains("regions_of_delivery", [region]);
 
@@ -108,7 +108,7 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
     return JSON.stringify({ error: profileError?.message || "Profile not found" });
   }
 
-  // Query tenders matching profile's province and keywords
+  // Query tenders matching profile's province
   let q = supabase
     .from("tenders")
     .select("*")
@@ -118,7 +118,16 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
 
   const { data, error } = await q;
   if (error) return JSON.stringify({ error: error.message });
-  return JSON.stringify(data || []);
+
+  // Score results by keyword overlap with title/description
+  const keywords = (profile.keywords || []).map((k: string) => k.toLowerCase());
+  const scored = (data || []).map((t: any) => {
+    const text = `${t.title} ${t.description}`.toLowerCase();
+    const matched = keywords.filter((k: string) => text.includes(k));
+    return { ...t, match_score: matched.length > 0 ? Math.round((matched.length / Math.max(keywords.length, 1)) * 100) : 0, matched_keywords: matched };
+  });
+  scored.sort((a: any, b: any) => b.match_score - a.match_score);
+  return JSON.stringify(scored);
 }
 
 async function filterTenders(input: Record<string, any>): Promise<string> {
@@ -219,13 +228,20 @@ async function saveComplianceResult(input: Record<string, any>): Promise<string>
 async function saveDraft(input: Record<string, any>): Promise<string> {
   const { profile_id, tender_id, section_type, content } = input;
 
-  const sections: Record<string, string> = {};
-  sections[section_type] = content;
+  // Read existing draft to merge sections (upsert would overwrite the entire JSONB)
+  const { data: existing } = await supabase
+    .from("bid_drafts")
+    .select("sections")
+    .eq("profile_id", profile_id)
+    .eq("tender_id", tender_id)
+    .single();
+
+  const mergedSections = { ...(existing?.sections || {}), [section_type]: content };
 
   const { data, error } = await supabase
     .from("bid_drafts")
     .upsert(
-      { profile_id, tender_id, sections, status: "draft" },
+      { profile_id, tender_id, sections: mergedSections, status: "draft" },
       { onConflict: "profile_id,tender_id" }
     )
     .select()
