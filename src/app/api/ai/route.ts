@@ -3,17 +3,30 @@ import Anthropic from "@anthropic-ai/sdk";
 import { TOOL_DEFINITIONS } from "@/lib/ai/tools";
 import { getSystemPrompt, AGENT_TOOLS } from "@/lib/ai/prompts";
 import { handleToolCall } from "@/lib/ai/tool-handlers";
+import { buildAgentContext, formatContextForPrompt } from "@/lib/ai/context-builder";
 import { AgentId, ChatMessage } from "@/lib/types";
 
 const anthropic = new Anthropic();
 
 export async function POST(request: NextRequest) {
   try {
-    const { agentId, messages, profileContext } = (await request.json()) as {
+    const { agentId, messages, profileId, tenderId, profileContext } = (await request.json()) as {
       agentId: AgentId;
       messages: ChatMessage[];
-      profileContext?: string;
+      profileId?: number;
+      tenderId?: number;
+      profileContext?: string; // Legacy: still accepted from old frontend, removed in Workload 2
     };
+
+    // Build context server-side from Supabase when profileId is provided;
+    // fall back to legacy profileContext string from old frontend
+    let contextString = "";
+    if (profileId) {
+      const context = await buildAgentContext(agentId, profileId, tenderId);
+      contextString = formatContextForPrompt(context);
+    } else if (profileContext) {
+      contextString = profileContext;
+    }
 
     // Filter tools to only those available for this agent
     const allowedTools = AGENT_TOOLS[agentId] || [];
@@ -21,7 +34,7 @@ export async function POST(request: NextRequest) {
       allowedTools.includes(t.name)
     );
 
-    const systemPrompt = getSystemPrompt(agentId, profileContext || "");
+    const systemPrompt = getSystemPrompt(agentId, contextString);
 
     // Convert ChatMessages to Anthropic format
     const anthropicMessages = messages.map((m) => ({
