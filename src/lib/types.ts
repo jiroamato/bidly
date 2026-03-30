@@ -6,6 +6,16 @@ export interface BusinessProfile {
   province: string;
   capabilities: string;
   keywords: string[];
+  insurance_amount: string;
+  bonding_limit: number | null;
+  certifications: string[];
+  years_in_business: number | null;
+  past_gov_experience: string;
+  pbn: string;
+  is_canadian: boolean | null;
+  security_clearance: string;
+  project_size_min: number | null;
+  project_size_max: number | null;
   created_at: string;
 }
 
@@ -31,6 +41,52 @@ export interface Tender {
   notice_url: string;
   attachment_urls: string[];
   match_score?: number;
+}
+
+export interface TenderSelection {
+  id: number;
+  profile_id: number;
+  tender_id: number;
+  match_score: number;
+  matched_keywords: string[];
+  match_reasoning: string;
+  created_at: string;
+}
+
+export interface TenderAnalysisData {
+  whatTheyWant: string[];
+  deadlines: { label: string; value: string; urgent: boolean }[];
+  forms: string[];
+  evaluation: { criteria: string; weight: string }[];
+  risks: { level: "high" | "medium" | "low"; text: string }[];
+}
+
+export interface TenderAnalysis {
+  id: number;
+  profile_id: number;
+  tender_id: number;
+  analysis: TenderAnalysisData;
+  created_at: string;
+}
+
+export interface ComplianceItem {
+  name: string;
+  description: string;
+  status: "pass" | "fail" | "warn" | "pending";
+  statusLabel: string;
+  action: string | null;
+}
+
+export interface ComplianceSection {
+  title: string;
+  items: ComplianceItem[];
+}
+
+export interface ComplianceAssessment {
+  overallResult: "eligible" | "conditionally_eligible" | "not_eligible";
+  overallLabel: string;
+  summaryNote: string;
+  sections: ComplianceSection[];
 }
 
 export interface EligibilityCheck {
