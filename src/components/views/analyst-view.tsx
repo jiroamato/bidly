@@ -33,7 +33,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
     fetch("/api/analyze-tender", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tender }),
+      body: JSON.stringify({ tender, profileId: agent.profile?.id }),
     })
       .then((res) => {
         if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
@@ -52,7 +52,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [tender?.id]);
+  }, [tender?.id, agent.profile?.id]);
 
   if (!tender) {
     return (
@@ -150,7 +150,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
                 fetch("/api/analyze-tender", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ tender }),
+                  body: JSON.stringify({ tender, profileId: agent.profile?.id }),
                 })
                   .then((res) => {
                     if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
