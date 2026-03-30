@@ -95,7 +95,7 @@ Rules:
 
     // Persist analysis to tender_analyses if we have a profileId
     if (profileId && tender.id) {
-      await supabase
+      const { error: upsertError } = await supabase
         .from("tender_analyses")
         .upsert(
           { profile_id: profileId, tender_id: tender.id, analysis },
@@ -103,6 +103,10 @@ Rules:
         )
         .select()
         .single();
+
+      if (upsertError) {
+        console.error("Failed to persist analysis:", upsertError);
+      }
     }
 
     return NextResponse.json({ analysis });
