@@ -110,6 +110,9 @@ export function WriterView({ agent }: WriterViewProps) {
   const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
   const [draftSections, setDraftSections] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const profileId = agent.profile?.id;
   const tenderId = agent.selectedTender?.id;
@@ -126,7 +129,7 @@ export function WriterView({ agent }: WriterViewProps) {
           setDraftSections(data.sections);
         }
       })
-      .catch(() => {})
+      .catch((err) => { if (process.env.NODE_ENV !== 'production') console.warn('Failed to fetch drafts:', err); })
       .finally(() => setIsLoading(false));
   }, [profileId, tenderId]);
 
@@ -144,8 +147,12 @@ export function WriterView({ agent }: WriterViewProps) {
   const handleSaveDraft = useCallback(async () => {
     if (!profileId || !tenderId) return;
 
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
     try {
-      await fetch("/api/drafts", {
+      const res = await fetch("/api/drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -154,8 +161,14 @@ export function WriterView({ agent }: WriterViewProps) {
           sections: draftSections,
         }),
       });
-    } catch {
-      // Silently fail for now
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save draft";
+      setSaveError(message);
+    } finally {
+      setIsSaving(false);
     }
   }, [profileId, tenderId, draftSections]);
 
@@ -253,17 +266,27 @@ export function WriterView({ agent }: WriterViewProps) {
                 </button>
                 <button
                   onClick={handleSaveDraft}
+                  disabled={isSaving}
                   className="px-4 py-2 text-[10px] tracking-[1px] uppercase"
                   style={{
                     fontFamily: "var(--font-mono)",
-                    background: "var(--text-primary)",
+                    background: saveSuccess ? "var(--success, #16a34a)" : "var(--text-primary)",
                     color: "var(--white)",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: isSaving ? "not-allowed" : "pointer",
+                    opacity: isSaving ? 0.6 : 1,
                   }}
                 >
-                  Save Draft
+                  {isSaving ? "Saving..." : saveSuccess ? "Saved" : "Save Draft"}
                 </button>
+                {saveError && (
+                  <span
+                    className="text-[10px] self-center"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--destructive, #dc2626)" }}
+                  >
+                    {saveError}
+                  </span>
+                )}
               </div>
             </div>
 
