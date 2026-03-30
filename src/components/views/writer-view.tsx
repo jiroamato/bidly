@@ -34,6 +34,7 @@ const STATUS_ICONS: Record<SectionStatus, { icon: string; color: string }> = {
   empty: { icon: "\u25CB", color: "var(--text-hint)" },
 };
 
+// TODO: "done" status will be set when user explicitly approves a section
 function getSectionStatus(sectionId: string, draftSections: Record<string, string>): SectionStatus {
   if (sectionId === "preview") {
     // Preview is available if any section has content
