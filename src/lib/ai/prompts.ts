@@ -68,9 +68,9 @@ When the user asks questions, answer them in the context of the selected contrac
 }
 
 export const AGENT_TOOLS: Record<AgentId, string[]> = {
-  profile: ["getCompanyProfile", "saveProgress"],
-  scout: ["searchTenders", "getCompanyProfile"],
-  analyst: ["getTenderDetails", "summarizeTender", "getFormChecklist"],
-  compliance: ["checkEligibility", "getCompanyProfile"],
-  writer: ["draftBidSection", "explainForm", "calculatePricing", "saveProgress"],
+  profile: ["saveProgress", "updateProfile"],
+  scout: ["matchTendersToProfile", "searchTenders", "filterTenders", "getTenderDetails", "getCompanyProfile", "saveTenderSelection", "updateProfile"],
+  analyst: ["getTenderDetails", "summarizeTender", "getFormChecklist", "getCompanyProfile", "getMatchContext", "saveAnalysis", "updateProfile"],
+  compliance: ["checkBuyCanadian", "runComplianceAssessment", "saveComplianceResult", "getCompanyProfile", "getTenderDetails", "updateProfile"],
+  writer: ["draftBidSection", "saveDraft", "calculatePricing", "explainForm", "getFormChecklist", "getTenderDetails", "getCompanyProfile", "updateProfile"],
 };
