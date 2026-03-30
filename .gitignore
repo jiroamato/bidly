@@ -1,10 +1,52 @@
-*.csv
-.env.local
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+.pnp.cjs
+
+# Build / output
 .next/
-docs/superpowers/
-.superpowers/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vercel
+.vercel
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing / coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.pem
+*.csv
+
+# Project-specific: AI agent artifacts
 .claude/
+.superpowers/
 AGENTS.md
 CLAUDE.md
+docs/superpowers/
 research/
