@@ -20,49 +20,6 @@ const PROVINCE_OPTIONS = [
   "Newfoundland", "PEI", "Yukon", "NWT", "Nunavut",
 ];
 
-/* ---------- DEMO DATA ---------- */
-
-const DEMO_PAIRS: { answer: string; nextQuestion: string }[] = [
-  {
-    answer: "Maple Facility Services Inc.",
-    nextQuestion: "Great! What province are you based in?",
-  },
-  {
-    answer: "Saskatchewan",
-    nextQuestion:
-      "What services does your company provide? (e.g., IT consulting, construction, environmental services)",
-  },
-  {
-    answer:
-      "Commercial janitorial and facility cleaning services, HVAC cleaning, general office cleaning, floor care, window cleaning, post-construction cleanup",
-    nextQuestion:
-      "What's your typical project size range and do you have certifications like WSIB or bonding?",
-  },
-  {
-    answer:
-      "Typical contracts $50K-$500K. Bonded, WSIB equivalent certified, $2M liability insurance. Government facility experience including RCMP detachments.",
-    nextQuestion:
-      "Here's your profile — does everything look right? Type 'yes' to confirm or tell me what to change.",
-  },
-  {
-    answer: "Yes, looks great!",
-    nextQuestion: "", // triggers save
-  },
-];
-
-const DEMO_PROFILE_PAYLOAD = {
-  company_name: "Maple Facility Services Inc.",
-  naics_codes: ["561720", "561210"],
-  location: "Regina, Saskatchewan",
-  province: "Saskatchewan",
-  capabilities:
-    "Commercial janitorial and facility cleaning services. HVAC system cleaning, general office cleaning, floor care, window cleaning, post-construction cleanup. Government facility experience including RCMP detachments. Typical contracts $50K-$500K. Bonded, WSIB equivalent certified, $2M liability insurance.",
-  keywords: [
-    "janitorial", "cleaning", "HVAC cleaning", "facility maintenance",
-    "custodial", "commercial cleaning", "government facilities",
-  ],
-};
-
 /* ---------- PARSE CAPABILITIES INTO SECTIONS ---------- */
 
 function parseCapabilities(text: string) {
@@ -92,6 +49,221 @@ function parseCapabilities(text: string) {
   return { services, experience, certifications, contractRange };
 }
 
+/* ---------- PROFILE CARD (read-only summary) ---------- */
+
+function ProfileCard({
+  profile,
+  onEdit,
+  onContinue,
+}: {
+  profile: BusinessProfile;
+  onEdit?: () => void;
+  onContinue?: () => void;
+}) {
+  const parsed = parseCapabilities(profile.capabilities);
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <div
+      className="text-[9px] tracking-[2px] uppercase mb-2"
+      style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+    >
+      {children}
+    </div>
+  );
+
+  return (
+    <div
+      className="pt-4"
+      style={{ animation: "profileReveal 0.6s ease-out forwards" }}
+    >
+      <div
+        className="overflow-hidden"
+        style={{
+          background: "var(--white)",
+          border: "1px solid var(--bidly-border)",
+        }}
+      >
+        <div className="h-1" style={{ background: "var(--agent-profile)" }} />
+
+        <div className="p-8">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <div
+                className="text-[9px] tracking-[2px] uppercase mb-2"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--agent-profile)",
+                }}
+              >
+                Business Profile
+              </div>
+              <div
+                className="text-2xl mb-1"
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  color: "var(--text-primary)",
+                  fontWeight: 400,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {profile.company_name}
+              </div>
+              <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                {profile.location || profile.province}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-1">
+              {profile.naics_codes.length > 0 && (
+                <div className="flex gap-2">
+                  {profile.naics_codes.map((code) => (
+                    <span
+                      key={code}
+                      className="text-[10px] tracking-[0.5px] px-3 py-1.5"
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        background: "var(--bg)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border-light)",
+                      }}
+                    >
+                      NAICS {code}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {onEdit && (
+                <button
+                  onClick={onEdit}
+                  className="text-[10px] tracking-[1px] uppercase px-4 py-2 border transition-all hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)] hover:shadow-sm"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    borderColor: "var(--bidly-border)",
+                    background: "var(--white)",
+                    color: "var(--text-muted)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Edit Profile
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div
+            className="mb-6"
+            style={{ borderBottom: "1px solid var(--border-light)" }}
+          />
+
+          <div className="grid grid-cols-[1fr_220px] gap-8">
+            {/* Left column */}
+            <div className="space-y-5">
+              {parsed.services.length > 0 && (
+                <div>
+                  <SectionLabel>Core Services</SectionLabel>
+                  <div
+                    className="text-[14px] leading-[1.8]"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {parsed.services.join(". ")}.
+                  </div>
+                </div>
+              )}
+
+              {parsed.experience.length > 0 && (
+                <div>
+                  <SectionLabel>Experience</SectionLabel>
+                  <div
+                    className="text-[14px] leading-[1.8]"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {parsed.experience.join(". ")}.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right column */}
+            <div
+              className="pl-8 space-y-5"
+              style={{ borderLeft: "1px solid var(--border-light)" }}
+            >
+              <div>
+                <SectionLabel>Province</SectionLabel>
+                <div
+                  className="text-sm font-medium"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {profile.province}
+                </div>
+              </div>
+
+              {parsed.contractRange.length > 0 && (
+                <div>
+                  <SectionLabel>Contract Range</SectionLabel>
+                  <div
+                    className="text-sm"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {parsed.contractRange.join(". ")}.
+                  </div>
+                </div>
+              )}
+
+              {parsed.certifications.length > 0 && (
+                <div>
+                  <SectionLabel>Certifications</SectionLabel>
+                  <div
+                    className="text-sm leading-relaxed"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {parsed.certifications.join(". ")}.
+                  </div>
+                </div>
+              )}
+
+              {profile.keywords.length > 0 && (
+                <div>
+                  <SectionLabel>Keywords</SectionLabel>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.keywords.map((kw) => (
+                      <span
+                        key={kw}
+                        className="text-[10px] px-2 py-0.5"
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          background: "var(--bg)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {onContinue && (
+        <button
+          onClick={onContinue}
+          className="mt-5 w-full px-6 py-4 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer transition-all hover:opacity-90"
+          style={{
+            fontFamily: "var(--font-mono)",
+            background: "var(--agent-scout)",
+            color: "var(--white)",
+            border: "none",
+          }}
+        >
+          Continue to Scout &rarr;
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ---------- COMPONENT ---------- */
 
 export function ProfileView({ agent }: ProfileViewProps) {
@@ -101,15 +273,14 @@ export function ProfileView({ agent }: ProfileViewProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-
-  // Demo state
-  const [demoMode, setDemoMode] = useState(false);
-  const [demoStep, setDemoStep] = useState(0);
-  const lastDemoStep = useRef(-1);
+  const [editMode, setEditMode] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  // If agent already has a profile (returning user), show summary immediately
+  const hasExistingProfile = agent.profile !== null && !editMode;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -148,59 +319,18 @@ export function ProfileView({ agent }: ProfileViewProps) {
       }
 
       setIsComplete(true);
+      setEditMode(false);
       agent.completeAgent("profile");
       setTimeout(() => setShowProfile(true), 400);
     },
     [agent]
   );
 
-  /* ---------- DEMO MODE: auto-advance with slow pacing ---------- */
-
-  useEffect(() => {
-    if (!demoMode || isComplete) return;
-    if (lastDemoStep.current >= demoStep) return;
-    lastDemoStep.current = demoStep;
-
-    if (demoStep >= DEMO_PAIRS.length) return;
-    const pair = DEMO_PAIRS[demoStep];
-
-    // Pause before user answer appears
-    const userTimer = setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: pair.answer, timestamp: Date.now() },
-      ]);
-
-      if (pair.nextQuestion) {
-        // Typing indicator after a pause
-        setTimeout(() => setIsTyping(true), 600);
-        // Then bot response
-        setTimeout(() => {
-          setIsTyping(false);
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: pair.nextQuestion, timestamp: Date.now() },
-          ]);
-          setDemoStep((s) => s + 1);
-        }, 2000);
-      } else {
-        // Final step — typing then save
-        setTimeout(() => setIsTyping(true), 600);
-        setTimeout(() => {
-          setIsTyping(false);
-          saveProfile(DEMO_PROFILE_PAYLOAD);
-        }, 1800);
-      }
-    }, 1200);
-
-    return () => clearTimeout(userTimer);
-  }, [demoMode, demoStep, isComplete, saveProfile]);
-
   /* ---------- NORMAL MODE: AI chatbot ---------- */
 
   const handleSend = useCallback(
     async (text: string) => {
-      if (isComplete || demoMode) return;
+      if (isComplete) return;
 
       const userMsg: ChatMessage = { role: "user", content: text, timestamp: Date.now() };
       const updated = [...messagesRef.current, userMsg];
@@ -211,7 +341,11 @@ export function ProfileView({ agent }: ProfileViewProps) {
         const res = await fetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentId: "profile", messages: updated }),
+          body: JSON.stringify({
+            agentId: "profile",
+            messages: updated,
+            profileId: agent.profile?.id,
+          }),
         });
 
         if (!res.ok) throw new Error("AI request failed");
@@ -249,7 +383,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
         ]);
       }
     },
-    [isComplete, demoMode, saveProfile]
+    [isComplete, saveProfile, agent.profile?.id]
   );
 
   const extractAndSaveProfile = async (conversation: ChatMessage[]) => {
@@ -268,6 +402,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
               timestamp: Date.now(),
             },
           ],
+          profileId: agent.profile?.id,
         }),
       });
       const data = await res.json();
@@ -282,9 +417,65 @@ export function ProfileView({ agent }: ProfileViewProps) {
     }
   };
 
-  const handleDemoClick = () => setDemoMode(true);
+  const handleEditProfile = () => {
+    setEditMode(true);
+    setIsComplete(false);
+    setShowProfile(false);
+    setMessages([
+      {
+        role: "assistant",
+        content:
+          "I have your existing profile. What would you like to update? You can change your company details, services, certifications, or any other information.",
+        timestamp: Date.now(),
+      },
+    ]);
+  };
 
-  /* ---------- RENDER ---------- */
+  /* ---------- RENDER: Returning user with existing profile ---------- */
+
+  if (hasExistingProfile && agent.profile) {
+    return (
+      <div className="flex flex-col flex-1 h-full" style={{ background: "var(--bg)" }}>
+        <div
+          className="flex-shrink-0 border-b"
+          style={{ background: "var(--white)", borderColor: "var(--border-light)" }}
+        >
+          <div className="max-w-[860px] mx-auto px-10 py-6">
+            <h2
+              className="mb-1"
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: 28,
+                fontWeight: 400,
+                color: "var(--text-primary)",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Your Profile
+            </h2>
+            <p
+              className="text-[11px] tracking-[0.5px]"
+              style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+            >
+              Review your business profile or continue to scout
+            </p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-[860px] mx-auto px-10 py-8">
+            <ProfileCard
+              profile={agent.profile}
+              onEdit={handleEditProfile}
+              onContinue={() => agent.setActiveAgent("scout")}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- RENDER: New user or edit mode — chat interface ---------- */
 
   return (
     <div className="flex flex-col flex-1 h-full" style={{ background: "var(--bg)" }}>
@@ -315,21 +506,6 @@ export function ProfileView({ agent }: ProfileViewProps) {
                 Tell me about your business to get started
               </p>
             </div>
-            {!demoMode && !isComplete && userMessageCount === 0 && (
-              <button
-                onClick={handleDemoClick}
-                className="text-[10px] tracking-[1px] uppercase px-4 py-2 border transition-all hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)] hover:shadow-sm mt-1"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  borderColor: "var(--bidly-border)",
-                  background: "var(--white)",
-                  color: "var(--text-muted)",
-                  cursor: "pointer",
-                }}
-              >
-                Load Demo
-              </button>
-            )}
           </div>
 
           {/* Step indicator */}
@@ -423,9 +599,8 @@ export function ProfileView({ agent }: ProfileViewProps) {
                       {msg.content}
                     </div>
 
-                    {/* Province buttons — normal mode only, step 1 */}
-                    {!demoMode &&
-                      completedSteps === 1 &&
+                    {/* Province buttons — step 1 */}
+                    {completedSteps === 1 &&
                       i === messages.length - 1 &&
                       !isTyping && (
                         <div className="flex flex-wrap gap-2 mt-4">
@@ -501,192 +676,12 @@ export function ProfileView({ agent }: ProfileViewProps) {
             </div>
           )}
 
-          {/* Profile Card */}
+          {/* Profile Card — shown after chat completion */}
           {showProfile && agent.profile && (
-            <div
-              className="pt-4"
-              style={{ animation: "profileReveal 0.6s ease-out forwards" }}
-            >
-              <div
-                className="overflow-hidden"
-                style={{
-                  background: "var(--white)",
-                  border: "1px solid var(--bidly-border)",
-                }}
-              >
-                <div className="h-1" style={{ background: "var(--agent-profile)" }} />
-
-                <div className="p-8">
-                  <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <div
-                        className="text-[9px] tracking-[2px] uppercase mb-2"
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          color: "var(--agent-profile)",
-                        }}
-                      >
-                        Business Profile
-                      </div>
-                      <div
-                        className="text-2xl mb-1"
-                        style={{
-                          fontFamily: "var(--font-heading)",
-                          color: "var(--text-primary)",
-                          fontWeight: 400,
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        {agent.profile.company_name}
-                      </div>
-                      <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                        {agent.profile.location || agent.profile.province}
-                      </div>
-                    </div>
-
-                    {agent.profile.naics_codes.length > 0 && (
-                      <div className="flex gap-2 mt-1">
-                        {agent.profile.naics_codes.map((code) => (
-                          <span
-                            key={code}
-                            className="text-[10px] tracking-[0.5px] px-3 py-1.5"
-                            style={{
-                              fontFamily: "var(--font-mono)",
-                              background: "var(--bg)",
-                              color: "var(--text-secondary)",
-                              border: "1px solid var(--border-light)",
-                            }}
-                          >
-                            NAICS {code}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div
-                    className="mb-6"
-                    style={{ borderBottom: "1px solid var(--border-light)" }}
-                  />
-
-                  {(() => {
-                    const parsed = parseCapabilities(agent.profile.capabilities);
-                    const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-                      <div
-                        className="text-[9px] tracking-[2px] uppercase mb-2"
-                        style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-                      >
-                        {children}
-                      </div>
-                    );
-                    return (
-                      <div className="grid grid-cols-[1fr_220px] gap-8">
-                        {/* Left column */}
-                        <div className="space-y-5">
-                          {parsed.services.length > 0 && (
-                            <div>
-                              <SectionLabel>Core Services</SectionLabel>
-                              <div
-                                className="text-[14px] leading-[1.8]"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {parsed.services.join(". ")}.
-                              </div>
-                            </div>
-                          )}
-
-                          {parsed.experience.length > 0 && (
-                            <div>
-                              <SectionLabel>Experience</SectionLabel>
-                              <div
-                                className="text-[14px] leading-[1.8]"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {parsed.experience.join(". ")}.
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Right column */}
-                        <div
-                          className="pl-8 space-y-5"
-                          style={{ borderLeft: "1px solid var(--border-light)" }}
-                        >
-                          <div>
-                            <SectionLabel>Province</SectionLabel>
-                            <div
-                              className="text-sm font-medium"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {agent.profile.province}
-                            </div>
-                          </div>
-
-                          {parsed.contractRange.length > 0 && (
-                            <div>
-                              <SectionLabel>Contract Range</SectionLabel>
-                              <div
-                                className="text-sm"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {parsed.contractRange.join(". ")}.
-                              </div>
-                            </div>
-                          )}
-
-                          {parsed.certifications.length > 0 && (
-                            <div>
-                              <SectionLabel>Certifications</SectionLabel>
-                              <div
-                                className="text-sm leading-relaxed"
-                                style={{ color: "var(--text-primary)" }}
-                              >
-                                {parsed.certifications.join(". ")}.
-                              </div>
-                            </div>
-                          )}
-
-                          {agent.profile.keywords.length > 0 && (
-                            <div>
-                              <SectionLabel>Keywords</SectionLabel>
-                              <div className="flex flex-wrap gap-1.5">
-                                {agent.profile.keywords.map((kw) => (
-                                  <span
-                                    key={kw}
-                                    className="text-[10px] px-2 py-0.5"
-                                    style={{
-                                      fontFamily: "var(--font-mono)",
-                                      background: "var(--bg)",
-                                      color: "var(--text-secondary)",
-                                    }}
-                                  >
-                                    {kw}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              <button
-                onClick={() => agent.setActiveAgent("scout")}
-                className="mt-5 w-full px-6 py-4 text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer transition-all hover:opacity-90"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  background: "var(--agent-scout)",
-                  color: "var(--white)",
-                  border: "none",
-                }}
-              >
-                Continue to Scout &rarr;
-              </button>
-            </div>
+            <ProfileCard
+              profile={agent.profile}
+              onContinue={() => agent.setActiveAgent("scout")}
+            />
           )}
 
           <div ref={messagesEndRef} />
@@ -703,7 +698,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
             <ChatInput
               agentId="profile"
               onSend={handleSend}
-              disabled={isTyping || demoMode}
+              disabled={isTyping}
             />
           </div>
         </div>
