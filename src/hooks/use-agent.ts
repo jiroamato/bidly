@@ -49,7 +49,7 @@ export function useAgent(): AgentState {
           }));
         }
       })
-      .catch(() => {}); // No profile yet — that's fine
+      .catch((err) => { if (process.env.NODE_ENV !== 'production') console.warn('Profile hydration failed:', err); });
   }, []);
 
   const setActiveAgent = useCallback(
