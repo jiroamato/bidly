@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (profileId) {
       const { data: profile } = await supabase
         .from("business_profiles")
-        .select("*")
+        .select("company_name, location, province, capabilities, keywords, insurance_amount, certifications, years_in_business, past_gov_experience")
         .eq("id", profileId)
         .single();
 
@@ -42,7 +42,7 @@ Government Experience: ${profile.past_gov_experience || "None listed"}`;
       // Fetch match context from tender_selections
       const { data: matchData } = await supabase
         .from("tender_selections")
-        .select("*")
+        .select("match_score, matched_keywords, match_reasoning")
         .eq("profile_id", profileId)
         .eq("tender_id", tender.id)
         .single();
