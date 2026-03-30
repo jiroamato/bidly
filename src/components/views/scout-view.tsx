@@ -43,12 +43,6 @@ export function ScoutView({ agent }: ScoutViewProps) {
     loadTenders();
   }, [loadTenders]);
 
-  // Allow updating tenders when AI provides scored results
-  const handleTendersUpdate = useCallback((scoredTenders: TenderWithScore[]) => {
-    setTenders(scoredTenders);
-    setLoading(false);
-  }, []);
-
   const filtered = tenders.filter((t) => {
     if (activeFilter === "High Match") return t.match_score >= 80;
     if (activeFilter === "Closing Soon") {
