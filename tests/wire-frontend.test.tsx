@@ -46,6 +46,8 @@ function makeAgentState(overrides = {}) {
       trade_agreements: ["CFTA"], contracting_entity: "City of Toronto",
       notice_url: "", attachment_urls: [],
     },
+    profileId: 1,
+    tenderId: null,
     setActiveAgent: vi.fn(),
     completeAgent: vi.fn(),
     setProfile: vi.fn(),
