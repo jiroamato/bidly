@@ -3,17 +3,23 @@ import Anthropic from "@anthropic-ai/sdk";
 import { TOOL_DEFINITIONS } from "@/lib/ai/tools";
 import { getSystemPrompt, AGENT_TOOLS } from "@/lib/ai/prompts";
 import { handleToolCall } from "@/lib/ai/tool-handlers";
+import { buildAgentContext, formatContextForPrompt } from "@/lib/ai/context-builder";
 import { AgentId, ChatMessage } from "@/lib/types";
 
 const anthropic = new Anthropic();
 
 export async function POST(request: NextRequest) {
   try {
-    const { agentId, messages, profileContext } = (await request.json()) as {
+    const { agentId, messages, profileId, tenderId } = (await request.json()) as {
       agentId: AgentId;
       messages: ChatMessage[];
-      profileContext?: string;
+      profileId?: number;
+      tenderId?: number;
     };
+
+    // Build context server-side from Supabase
+    const context = await buildAgentContext(agentId, profileId || 0, tenderId);
+    const contextString = formatContextForPrompt(context);
 
     // Filter tools to only those available for this agent
     const allowedTools = AGENT_TOOLS[agentId] || [];
@@ -21,7 +27,7 @@ export async function POST(request: NextRequest) {
       allowedTools.includes(t.name)
     );
 
-    const systemPrompt = getSystemPrompt(agentId, profileContext || "");
+    const systemPrompt = getSystemPrompt(agentId, contextString);
 
     // Convert ChatMessages to Anthropic format
     const anthropicMessages = messages.map((m) => ({
