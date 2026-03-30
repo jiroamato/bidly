@@ -9,9 +9,9 @@ interface ChatPanelProps {
   agentId: AgentId;
   profileId?: number;
   tenderId?: number;
-  /** @deprecated Use profileId instead. Kept for backward compat with views not yet migrated. */
-  selectedTender?: Tender | null;
   /** @deprecated Use tenderId instead. Kept for backward compat with views not yet migrated. */
+  selectedTender?: Tender | null;
+  /** @deprecated Use profileId instead. Kept for backward compat with views not yet migrated. */
   profile?: BusinessProfile | null;
 }
 
