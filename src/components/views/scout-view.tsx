@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Tender } from "@/lib/types";
 import { ChatPanel } from "@/components/chat-panel";
 import { AgentState } from "@/hooks/use-agent";
@@ -18,29 +18,30 @@ export function ScoutView({ agent }: ScoutViewProps) {
   const [tenders, setTenders] = useState<TenderWithScore[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/tenders?limit=50")
-      .then((r) => r.json())
-      .then((data: Tender[]) => {
-        // Score tenders by keyword relevance to demo profile
-        const BOOST_KEYWORDS = [
-          "rcmp", "janitorial", "cleaning", "custodial", "facility",
-          "maintenance", "housekeeping", "sanitation", "detachment",
-        ];
-        const scored = data.map((t) => {
-          const text = `${t.title} ${t.description} ${t.contracting_entity}`.toLowerCase();
-          const hits = BOOST_KEYWORDS.filter((kw) => text.includes(kw)).length;
-          // RCMP + janitorial/cleaning combo gets top score
-          const isRcmpJanitorial = text.includes("rcmp") && (text.includes("janitorial") || text.includes("cleaning"));
-          const score = isRcmpJanitorial ? 99 : hits >= 2 ? 97 : hits === 1 ? 88 : Math.floor(40 + Math.random() * 30);
-          return { ...t, match_score: score };
-        });
-        scored.sort((a, b) => b.match_score - a.match_score);
-        setTenders(scored);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+  // Fetch tenders from API — scores come from the AI via match_score field
+  const loadTenders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/tenders");
+      if (!res.ok) throw new Error("Failed to load tenders");
+      const data: Tender[] = await res.json();
+      // Use match_score from the API if available, default to 0
+      const scored: TenderWithScore[] = data.map((t) => ({
+        ...t,
+        match_score: t.match_score ?? 0,
+      }));
+      scored.sort((a, b) => b.match_score - a.match_score);
+      setTenders(scored);
+    } catch (err) {
+      console.error("Failed to load tenders:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadTenders();
+  }, [loadTenders]);
 
   const filtered = tenders.filter((t) => {
     if (activeFilter === "High Match") return t.match_score >= 80;
@@ -97,7 +98,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
         {!loading && tenders.length === 0 && (
           <div className="mt-8 text-center py-12" style={{ color: "var(--text-muted)" }}>
             <div className="text-[11px] tracking-[2px] uppercase" style={{ fontFamily: "var(--font-mono)" }}>
-              No matching tenders found. Try broadening your search criteria.
+              No matching tenders found. Ask the Scout Agent to find matches for your profile.
             </div>
           </div>
         )}
@@ -255,7 +256,11 @@ export function ScoutView({ agent }: ScoutViewProps) {
       </div>
 
       {/* Chat Panel */}
-      <ChatPanel agentId="scout" selectedTender={agent.selectedTender} profile={agent.profile} />
+      <ChatPanel
+        agentId="scout"
+        profileId={agent.profile?.id}
+        tenderId={agent.selectedTender?.id}
+      />
     </div>
   );
 }

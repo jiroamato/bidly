@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useAgent } from "@/hooks/use-agent";
 
 describe("useAgent hook", () => {
@@ -142,6 +142,32 @@ describe("useAgent hook", () => {
       };
       act(() => result.current.setSelectedTender(mockTender));
       expect(result.current.selectedTender).toEqual(mockTender);
+    });
+  });
+
+  describe("profileId", () => {
+    it("starts as null", () => {
+      const { result } = renderHook(() => useAgent());
+      expect(result.current.profileId).toBeNull();
+    });
+
+    it("sets profileId when setProfile is called with a profile that has an id", () => {
+      const { result } = renderHook(() => useAgent());
+      act(() => result.current.setProfile({ id: 42, company_name: "Test" } as any));
+      expect(result.current.profileId).toBe(42);
+    });
+  });
+
+  describe("tenderId", () => {
+    it("starts as null", () => {
+      const { result } = renderHook(() => useAgent());
+      expect(result.current.tenderId).toBeNull();
+    });
+
+    it("sets tenderId when setSelectedTender is called", () => {
+      const { result } = renderHook(() => useAgent());
+      act(() => result.current.setSelectedTender({ id: 99 } as any));
+      expect(result.current.tenderId).toBe(99);
     });
   });
 });

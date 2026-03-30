@@ -7,24 +7,20 @@ import { useChat } from "@/hooks/use-chat";
 
 interface ChatPanelProps {
   agentId: AgentId;
+  profileId?: number;
+  tenderId?: number;
+  /** @deprecated Use tenderId instead. Kept for backward compat with views not yet migrated. */
   selectedTender?: Tender | null;
+  /** @deprecated Use profileId instead. Kept for backward compat with views not yet migrated. */
   profile?: BusinessProfile | null;
 }
 
-function buildContext(selectedTender?: Tender | null, profile?: BusinessProfile | null): string {
-  const parts: string[] = [];
-  if (profile) {
-    parts.push(`Company: ${profile.company_name} | Location: ${profile.location || profile.province} | Services: ${profile.capabilities} | Keywords: ${profile.keywords.join(", ")}`);
-  }
-  if (selectedTender) {
-    parts.push(`Selected Contract: "${selectedTender.title}" | Ref: ${selectedTender.reference_number} | Entity: ${selectedTender.contracting_entity} | Closes: ${selectedTender.closing_date} | Regions: ${selectedTender.regions_of_delivery.join(", ")} | Description: ${selectedTender.description}`);
-  }
-  return parts.join("\n\n");
-}
+export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile }: ChatPanelProps) {
+  // Derive IDs from objects if the new-style props aren't provided (backward compat)
+  const resolvedProfileId = profileId ?? profile?.id;
+  const resolvedTenderId = tenderId ?? selectedTender?.id;
 
-export function ChatPanel({ agentId, selectedTender, profile }: ChatPanelProps) {
-  const context = buildContext(selectedTender, profile);
-  const { messages, isLoading, error, sendMessage } = useChat(agentId);
+  const { messages, isLoading, error, sendMessage } = useChat(agentId, resolvedProfileId, resolvedTenderId);
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -47,7 +43,7 @@ export function ChatPanel({ agentId, selectedTender, profile }: ChatPanelProps) 
   const handleSubmit = () => {
     const text = inputValue.trim();
     if (!text || isLoading) return;
-    sendMessage(text, context || undefined);
+    sendMessage(text);
     setInputValue("");
   };
 

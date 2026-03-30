@@ -46,6 +46,8 @@ function makeAgentState(overrides = {}) {
       trade_agreements: ["CFTA"], contracting_entity: "City of Toronto",
       notice_url: "", attachment_urls: [],
     },
+    profileId: 1,
+    tenderId: null,
     setActiveAgent: vi.fn(),
     completeAgent: vi.fn(),
     setProfile: vi.fn(),
@@ -66,6 +68,7 @@ describe("ScoutView — API wiring", () => {
       { id: 1, title: "Tender A", reference_number: "REF-1", closing_date: "2026-05-01", status: "Open", procurement_category: "CNST", contracting_entity: "City", regions_of_opportunity: ["Ontario"], regions_of_delivery: ["Ontario"], match_score: 90 },
     ];
     mockFetch.mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve(tenders),
     });
 
@@ -74,7 +77,7 @@ describe("ScoutView — API wiring", () => {
       render(<ScoutView agent={makeAgentState()} />);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/tenders?limit=50");
+    expect(mockFetch).toHaveBeenCalledWith("/api/tenders");
   });
 
   it("shows loading state before tenders arrive", async () => {
@@ -91,6 +94,7 @@ describe("ScoutView — API wiring", () => {
 
   it("shows empty state when no tenders returned", async () => {
     mockFetch.mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve([]),
     });
 
@@ -106,6 +110,7 @@ describe("ScoutView — API wiring", () => {
 
   it("renders chat input that is not disabled", async () => {
     mockFetch.mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve([]),
     });
 
@@ -128,9 +133,29 @@ describe("ProfileView — API wiring", () => {
 
   it("POSTs to /api/profile when profile is completed", async () => {
     const savedProfile = { id: 5, company_name: "Acme", province: "Ontario" };
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(savedProfile),
+    // Mock all fetch calls: /api/ai returns AI responses, /api/profile returns saved profile
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(savedProfile),
+        });
+      }
+      // /api/ai — return a chat response, and for extraction return valid JSON
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (lastMsg?.content?.includes("Extract the company profile")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] }),
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: "Got it. Next question?" }),
+      });
     });
 
     const agent = makeAgentState({
@@ -167,7 +192,30 @@ describe("ProfileView — API wiring", () => {
   });
 
   it("falls back to local profile when API fails", async () => {
-    mockFetch.mockRejectedValue(new Error("Network error"));
+    let callCount = 0;
+    // First 4 AI calls succeed (chat messages), 5th (extractAndSaveProfile) also succeeds
+    // but /api/profile POST fails
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile") {
+        return Promise.reject(new Error("Network error"));
+      }
+      // /api/ai calls
+      callCount++;
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (lastMsg?.content?.includes("Extract the company profile")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing", keywords: ["plumbing"] }),
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: "Got it. Next question?" }),
+      });
+    });
 
     const agent = makeAgentState({
       activeAgent: "profile",
