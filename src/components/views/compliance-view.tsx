@@ -139,18 +139,23 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
         const count = updated.filter((m) => m.role === "user").length;
         if (count >= 3) {
           const lower = text.toLowerCase();
-          if (
-            lower.includes("yes") ||
-            lower.includes("done") ||
-            lower.includes("that's all") ||
-            lower.includes("looks good") ||
-            lower.includes("correct") ||
-            lower.includes("confirm") ||
-            lower.includes("no more") ||
-            lower.includes("nothing else") ||
-            lower.includes("run") ||
-            lower.includes("assess")
-          ) {
+          // Use word-boundary regex to avoid false positives on short words
+          const triggerPatterns = [
+            /\byes\b(?:,?\s*(?:run|go|do|please|that'?s))?/,
+            /\bdone\b/,
+            /\bthat'?s all\b/,
+            /\blooks good\b/,
+            /\bcorrect\b/,
+            /\bconfirm\b/,
+            /\bno more\b/,
+            /\bnothing else\b/,
+            /\brun\s+(?:assessment|compliance|check|it)\b/,
+            /\brun\b(?:\s+(?:the|this|my))?\s+(?:assessment|compliance|check)\b/,
+            /\bassess(?:ment)?\b/,
+            /\bgo ahead\b/,
+            /\bcheck compliance\b/,
+          ];
+          if (triggerPatterns.some((pattern) => pattern.test(lower))) {
             await runComplianceAssessment(updated);
           }
         }
