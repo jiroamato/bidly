@@ -15,17 +15,20 @@ export interface AgentState {
   completeAgent: (id: AgentId) => void;
   setProfile: (p: BusinessProfile) => void;
   setSelectedTender: (t: Tender) => void;
+  resetDemo: () => void;
 }
+
+const INITIAL_STATUSES: Record<AgentId, AgentStatus> = {
+  profile: "active",
+  scout: "locked",
+  analyst: "locked",
+  compliance: "locked",
+  writer: "locked",
+};
 
 export function useAgent(): AgentState {
   const [activeAgent, setActiveAgentRaw] = useState<AgentId>("profile");
-  const [statuses, setStatuses] = useState<Record<AgentId, AgentStatus>>({
-    profile: "active",
-    scout: "locked",
-    analyst: "locked",
-    compliance: "locked",
-    writer: "locked",
-  });
+  const [statuses, setStatuses] = useState<Record<AgentId, AgentStatus>>({ ...INITIAL_STATUSES });
   const statusesRef = useRef(statuses);
   statusesRef.current = statuses;
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
@@ -82,6 +85,13 @@ export function useAgent(): AgentState {
     });
   }, []);
 
+  const resetDemo = useCallback(() => {
+    setActiveAgentRaw("profile");
+    setStatuses({ ...INITIAL_STATUSES });
+    setProfile(null);
+    setSelectedTender(null);
+  }, []);
+
   return {
     activeAgent,
     statuses,
@@ -93,5 +103,6 @@ export function useAgent(): AgentState {
     completeAgent,
     setProfile,
     setSelectedTender,
+    resetDemo,
   };
 }
