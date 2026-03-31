@@ -34,6 +34,13 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(data);
 }
 
+export async function DELETE() {
+  const supabase = createServerClient();
+  const { error } = await supabase.from("business_profiles").delete().neq("id", 0);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
+
 export async function PUT(request: NextRequest) {
   let body;
   try {
