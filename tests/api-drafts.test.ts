@@ -4,7 +4,7 @@ const mockSingle = vi.fn();
 const mockEqTender = vi.fn(() => ({ single: mockSingle }));
 const mockEqProfile = vi.fn(() => ({ eq: mockEqTender }));
 const mockSelect = vi.fn(() => ({ eq: mockEqProfile }));
-const mockUpsert = vi.fn(() => ({ select: vi.fn(() => ({ single: mockSingle })) }));
+const mockUpsert = vi.fn((..._args: unknown[]) => ({ select: vi.fn(() => ({ single: mockSingle })) }));
 const mockFrom = vi.fn(() => ({ select: mockSelect, upsert: mockUpsert }));
 
 vi.mock("@/lib/supabase", () => ({

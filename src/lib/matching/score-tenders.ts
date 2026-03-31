@@ -63,7 +63,7 @@ export function combineTenderScores(
   const categoryAvailable = naicsCodes.length > 0;
 
   // Calculate effective weights (redistribute if category unavailable)
-  let weights = { ...SCORING_WEIGHTS };
+  let weights: { bm25: number; category: number; synonym: number; location: number } = { ...SCORING_WEIGHTS };
   if (!categoryAvailable) {
     const redistributed = weights.category;
     const remaining = weights.bm25 + weights.synonym + weights.location;
