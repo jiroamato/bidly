@@ -40,14 +40,53 @@ export function useChat(agentId: AgentId, profileId?: number, tenderId?: number)
           throw new Error(`AI request failed: ${response.status}`);
         }
 
-        const data = await response.json();
+        // Stream SSE response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        // Add an empty assistant message to fill incrementally
         const assistantMessage: ChatMessage = {
           role: "assistant",
-          content: data.content,
+          content: "",
           timestamp: Date.now(),
         };
-
         setMessages((prev) => [...prev, assistantMessage]);
+
+        if (reader) {
+          let buffer = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                if (data === "[DONE]") break;
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.text) {
+                    fullText += parsed.text;
+                    setMessages((prev) => {
+                      const updated = [...prev];
+                      updated[updated.length - 1] = {
+                        ...updated[updated.length - 1],
+                        content: fullText,
+                      };
+                      return updated;
+                    });
+                  }
+                } catch {
+                  // skip malformed chunks
+                }
+              }
+            }
+          }
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {

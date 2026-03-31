@@ -350,13 +350,50 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         });
 
         if (!res.ok) throw new Error("AI request failed");
-        const data = await res.json();
-        setIsTyping(false);
 
+        // Stream the response
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        setIsTyping(false);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.content, timestamp: Date.now() },
+          { role: "assistant", content: "", timestamp: Date.now() },
         ]);
+
+        if (reader) {
+          let buffer = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                if (data === "[DONE]") break;
+                try {
+                  const parsed = JSON.parse(data);
+                  if (parsed.text) {
+                    fullText += parsed.text;
+                    setMessages((prev) => {
+                      const msgs = [...prev];
+                      msgs[msgs.length - 1] = {
+                        ...msgs[msgs.length - 1],
+                        content: fullText,
+                      };
+                      return msgs;
+                    });
+                  }
+                } catch {
+                  // skip malformed chunks
+                }
+              }
+            }
+          }
+        }
 
         // After 4+ user messages and a confirmation word, extract profile
         const count = updated.filter((m) => m.role === "user").length;
@@ -406,8 +443,33 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
           profileId: agent.profile?.id,
         }),
       });
-      const data = await res.json();
-      const jsonStr = data.content
+
+      // Read SSE stream to collect full text
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+      if (reader) {
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6);
+              if (data === "[DONE]") break;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.text) fullText += parsed.text;
+              } catch { /* skip */ }
+            }
+          }
+        }
+      }
+
+      const jsonStr = fullText
         .replace(/```json\n?/g, "")
         .replace(/```\n?/g, "")
         .trim();
