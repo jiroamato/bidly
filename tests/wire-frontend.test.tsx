@@ -251,6 +251,20 @@ describe("ProfileView — API wiring", () => {
 
 describe("AnalystView — chat wiring", () => {
   it("renders chat input that is not disabled", async () => {
+    // Mock fetch to return analysis data so the component exits loading state
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        analysis: {
+          whatTheyWant: ["Item A"],
+          deadlines: [],
+          forms: [],
+          evaluation: [],
+          risks: [],
+        },
+      }),
+    });
+
     const { AnalystView } = await import("@/components/views/analyst-view");
     await act(async () => {
       render(<AnalystView agent={makeAgentState({ activeAgent: "analyst" })} />);
