@@ -100,7 +100,9 @@ export async function POST(request: NextRequest) {
       .map((b) => b.text)
       .join("\n");
 
-    // Stream the text back as SSE so the frontend renders it incrementally
+    // NOTE: This is a simulated typewriter stream for demo purposes.
+    // The full Anthropic response has already been collected above.
+    // For real streaming, use the Anthropic SDK's `stream: true` option.
     const encoder = new TextEncoder();
     const CHUNK_SIZE = 4;
     const readable = new ReadableStream({
@@ -126,7 +128,6 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        Connection: "keep-alive",
       },
     });
   } catch (error: any) {
