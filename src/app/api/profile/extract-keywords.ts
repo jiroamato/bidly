@@ -22,6 +22,7 @@ export function extractKeywordsFromCapabilities(
   const words: string[] = [];
   for (const phrase of phrases) {
     const tokens = phrase
+      .replace(/-/g, " ")
       .replace(/[^\w\s]/g, "")
       .toLowerCase()
       .split(/\s+/)

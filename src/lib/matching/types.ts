@@ -1,10 +1,5 @@
 import type { Tender } from "@/lib/types";
 
-export interface BM25Result {
-  score: number; // 0-100 normalized
-  matchedTerms: string[];
-}
-
 export interface CategoryResult {
   score: number; // 0, 50, or 100
   profileCategories: string[];

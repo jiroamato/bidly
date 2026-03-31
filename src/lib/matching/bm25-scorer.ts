@@ -11,6 +11,7 @@ const STOP_WORDS = new Set([
 export function normalize(text: string): string {
   return text
     .toLowerCase()
+    .replace(/-/g, " ")
     .replace(/[^\w\s]/g, "")
     .trim();
 }

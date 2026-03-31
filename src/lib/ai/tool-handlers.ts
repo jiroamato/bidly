@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase";
+import { combineTenderScores } from "@/lib/matching/score-tenders";
 
 const supabase = createServerClient();
 
@@ -116,7 +117,6 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
   if (tenderError) return JSON.stringify({ error: tenderError.message });
 
   // Score using shared module
-  const { combineTenderScores } = await import("@/lib/matching/score-tenders");
   const scored = combineTenderScores(profile, tenders || []);
   return JSON.stringify(scored);
 }

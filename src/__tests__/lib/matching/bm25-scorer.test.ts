@@ -6,8 +6,8 @@ describe("normalize", () => {
     expect(normalize("  Cloud Migration  ")).toBe("cloud migration");
   });
 
-  it("strips punctuation", () => {
-    expect(normalize("IT-consulting, Inc.")).toBe("itconsulting inc");
+  it("strips punctuation and splits hyphens", () => {
+    expect(normalize("IT-consulting, Inc.")).toBe("it consulting inc");
   });
 
   it("handles empty string", () => {
@@ -35,8 +35,8 @@ describe("tokenize", () => {
     expect(tokens).toContain("clients");
   });
 
-  it("strips punctuation before tokenizing", () => {
-    expect(tokenize("IT-consulting, Inc.")).toEqual(["itconsulting", "inc"]);
+  it("splits hyphens and strips punctuation before tokenizing", () => {
+    expect(tokenize("IT-consulting, Inc.")).toEqual(["consulting", "inc"]);
   });
 
   it("returns empty array for empty string", () => {

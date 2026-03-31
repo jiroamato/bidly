@@ -41,7 +41,7 @@ export function combineTenderScores(
 
   // Synonym-only BM25 scores (terms not already in keywords)
   const synonymTerms: string[] = [];
-  for (const [keyword, syns] of Object.entries(synonyms)) {
+  for (const [, syns] of Object.entries(synonyms)) {
     for (const syn of syns) {
       const synWords = syn
         .toLowerCase()
