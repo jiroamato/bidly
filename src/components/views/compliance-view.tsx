@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
+import { MarkdownMessage } from "@/components/markdown-message";
 
 interface ComplianceViewProps {
   agent: AgentState;
@@ -311,10 +312,10 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
                       Compliance Agent
                     </div>
                     <div
-                      className="text-[15px] leading-[1.7]"
+                      className="text-[15px]"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {msg.content}
+                      <MarkdownMessage content={msg.content} />
                     </div>
                   </div>
                 </div>

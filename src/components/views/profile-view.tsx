@@ -5,6 +5,7 @@ import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
 import { consumeSSEStream } from "@/lib/sse";
+import { MarkdownMessage } from "@/components/markdown-message";
 
 interface ProfileViewProps {
   agent: AgentState;
@@ -405,32 +406,27 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
           { role: "assistant", content: "", timestamp: Date.now() },
         ]);
 
+        let streamedText = "";
         if (reader) {
           await consumeSSEStream(reader, (accumulated) => {
+            streamedText = accumulated;
             setMessages((prev) => {
               const msgs = [...prev];
               msgs[msgs.length - 1] = {
                 ...msgs[msgs.length - 1],
-                content: accumulated,
+                content: accumulated.replace("PROFILE_COMPLETE", "").trim(),
               };
               return msgs;
             });
           });
         }
 
-        // After 4+ user messages and a confirmation word, extract profile
-        const count = updated.filter((m) => m.role === "user").length;
-        if (count >= 4) {
-          const lower = text.toLowerCase();
-          if (
-            lower.includes("yes") ||
-            lower.includes("confirm") ||
-            lower.includes("looks good") ||
-            lower.includes("correct") ||
-            lower.includes("great")
-          ) {
-            await extractAndSaveProfile(updated);
-          }
+        // Check if the assistant's streamed response signals the profile is complete.
+        // Profile data was already saved to Supabase via updateProfile tool calls
+        // during the conversation — just fetch it directly instead of making
+        // another Claude call to extract JSON.
+        if (streamedText.includes("PROFILE_COMPLETE")) {
+          await finalizeProfile();
         }
       } catch {
         setIsTyping(false);
@@ -446,6 +442,30 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
     },
     [isComplete, saveProfile, agent.profile?.id]
   );
+
+  const finalizeProfile = useCallback(async () => {
+    // If user already has a profile (editing flow), fetch the updated version
+    if (agent.profile?.id) {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const profile = await res.json();
+          if (profile?.id && profile.company_name) {
+            agent.setProfile(profile);
+            setIsComplete(true);
+            setEditMode(false);
+            agent.completeAgent("profile");
+            setTimeout(() => setShowProfile(true), 400);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Profile fetch failed, falling back to extraction:", err);
+      }
+    }
+    // New user or fetch failed: extract profile from conversation and create it
+    await extractAndSaveProfile(messagesRef.current);
+  }, [agent]);
 
   const extractAndSaveProfile = async (conversation: ChatMessage[]) => {
     try {
@@ -663,10 +683,10 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
                       Profile Agent
                     </div>
                     <div
-                      className="text-[15px] leading-[1.7]"
+                      className="text-[15px]"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {msg.content}
+                      <MarkdownMessage content={msg.content} />
                     </div>
 
                     {/* Province buttons — step 1, hidden if province already mentioned */}

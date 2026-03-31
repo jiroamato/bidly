@@ -155,17 +155,17 @@ describe("ProfileView — API wiring", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("POSTs to /api/profile when profile is completed", async () => {
-    const savedProfile = { id: 5, company_name: "Acme", province: "Ontario" };
-    // Mock: /api/ai returns SSE responses, /api/profile returns saved profile
+  it("extracts and POSTs profile for new users when completed", async () => {
+    const savedProfile = { id: 5, company_name: "Acme Corp", province: "Ontario" };
+    // New user: profile is null, so extraction via Claude is used
     mockFetch.mockImplementation((url: string, opts?: any) => {
-      if (url === "/api/profile") {
+      if (url === "/api/profile" && opts?.method === "POST") {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(savedProfile),
         });
       }
-      // /api/ai — return SSE chat responses; for extraction return valid JSON
+      // /api/ai calls — extraction returns JSON, chat returns SSE
       const body = opts?.body ? JSON.parse(opts.body) : {};
       const lastMsg = body.messages?.[body.messages.length - 1];
       if (lastMsg?.content?.includes("Extract the company profile")) {
@@ -186,8 +186,30 @@ describe("ProfileView — API wiring", () => {
       render(<ProfileView agent={agent} />);
     });
 
-    // Answer all 5 questions
-    const answers = ["Acme Corp", "Ontario", "Plumbing, pipes", "500K-2M, WSIB", "yes"];
+    const answers = ["Acme Corp", "Ontario", "Plumbing, pipes", "500K-2M, WSIB"];
+    let answerCount = 0;
+    const originalImpl = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile" && opts?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(savedProfile),
+        });
+      }
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (url === "/api/ai" && lastMsg?.content?.includes("Extract the company profile")) {
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
+      }
+      if (url === "/api/ai") {
+        answerCount++;
+        if (answerCount >= answers.length) {
+          return Promise.resolve(makeSSEResponse("Profile looks complete! PROFILE_COMPLETE"));
+        }
+      }
+      return originalImpl(url, opts);
+    });
     for (const answer of answers) {
       const input = screen.getByRole("textbox");
       await act(async () => {
@@ -200,20 +222,24 @@ describe("ProfileView — API wiring", () => {
     }
 
     await waitFor(() => {
+      // New user: should extract via Claude then POST to /api/profile
       expect(mockFetch).toHaveBeenCalledWith("/api/profile", expect.objectContaining({
         method: "POST",
-        headers: { "Content-Type": "application/json" },
       }));
+      expect(agent.setProfile).toHaveBeenCalledWith(savedProfile);
     });
   });
 
-  it("falls back to local profile when API fails", async () => {
-    // /api/ai returns SSE responses, /api/profile POST fails
+  it("falls back to extraction when GET /api/profile fails", async () => {
+    // GET /api/profile fails, forcing fallback to Claude extraction
     mockFetch.mockImplementation((url: string, opts?: any) => {
-      if (url === "/api/profile") {
+      if (url === "/api/profile" && (!opts || !opts.method || opts.method === "GET")) {
         return Promise.reject(new Error("Network error"));
       }
-      // /api/ai calls — return SSE responses
+      if (url === "/api/profile" && opts?.method === "POST") {
+        return Promise.reject(new Error("Network error"));
+      }
+      // /api/ai calls — return SSE responses; extraction returns JSON
       const body = opts?.body ? JSON.parse(opts.body) : {};
       const lastMsg = body.messages?.[body.messages.length - 1];
       if (lastMsg?.content?.includes("Extract the company profile")) {
@@ -234,7 +260,30 @@ describe("ProfileView — API wiring", () => {
       render(<ProfileView agent={agent} />);
     });
 
-    const answers = ["Acme Corp", "Ontario", "Plumbing", "500K, WSIB", "yes"];
+    const answers = ["Acme Corp", "Ontario", "Plumbing", "500K, WSIB"];
+    let answerCount2 = 0;
+    const originalImpl2 = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile" && (!opts || !opts.method || opts.method === "GET")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      if (url === "/api/profile" && opts?.method === "POST") {
+        return Promise.reject(new Error("Network error"));
+      }
+      if (url === "/api/ai") {
+        const body = opts?.body ? JSON.parse(opts.body) : {};
+        const lastMsg = body.messages?.[body.messages.length - 1];
+        if (lastMsg?.content?.includes("Extract the company profile")) {
+          const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing", keywords: ["plumbing"] });
+          return Promise.resolve(makeSSEResponse(profileJson));
+        }
+        answerCount2++;
+        if (answerCount2 >= answers.length) {
+          return Promise.resolve(makeSSEResponse("Profile complete! PROFILE_COMPLETE"));
+        }
+      }
+      return originalImpl2(url, opts);
+    });
     for (const answer of answers) {
       const input = screen.getByRole("textbox");
       await act(async () => {

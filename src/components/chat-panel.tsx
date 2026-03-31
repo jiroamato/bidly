@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { AgentId, BusinessProfile, Tender } from "@/lib/types";
 import { getAgent } from "@/lib/agents";
 import { useChat } from "@/hooks/use-chat";
+import { MarkdownMessage } from "@/components/markdown-message";
+import { Copy, Check } from "lucide-react";
 
 interface ChatPanelProps {
   agentId: AgentId;
@@ -16,12 +18,38 @@ interface ChatPanelProps {
   externalValue?: string;
 }
 
+function MessageCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [text]);
+
+  return (
+    <button
+      onClick={handleCopy}
+      data-copy-message=""
+      aria-label="Copy message"
+      className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-0 right-0 p-1 rounded"
+      style={{
+        color: "var(--text-muted)",
+        background: "var(--sidebar-bg)",
+        border: "1px solid var(--border-light)",
+      }}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+    </button>
+  );
+}
+
 export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile, externalValue }: ChatPanelProps) {
   // Derive IDs from objects if the new-style props aren't provided (backward compat)
   const resolvedProfileId = profileId ?? profile?.id;
   const resolvedTenderId = tenderId ?? selectedTender?.id;
 
-  const { messages, isLoading, error, sendMessage } = useChat(agentId, resolvedProfileId, resolvedTenderId);
+  const { messages, isLoading, isStreaming, error, sendMessage } = useChat(agentId, resolvedProfileId, resolvedTenderId);
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -123,20 +151,27 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
           </div>
 
           {/* Messages */}
-          <div className="px-8 py-5 space-y-5">
-            {messages.map((msg, i) => (
+          <div className="px-8 py-5 space-y-0">
+            {messages.map((msg, i) => {
+              const isLastAssistant = i === messages.length - 1 && msg.role === "assistant";
+              return (
               <div
                 key={i}
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                style={{ animation: "profileReveal 0.3s ease-out forwards" }}
+                style={{
+                  animation: "profileReveal 0.3s ease-out forwards",
+                  paddingBottom: "1.25rem",
+                  borderBottom: i < messages.length - 1 ? "1px solid var(--border-light)" : "none",
+                  marginBottom: i < messages.length - 1 ? "1.25rem" : "0",
+                }}
               >
                 {msg.role === "assistant" ? (
-                  <div className="max-w-[85%] flex gap-3">
+                  <div className="max-w-[90%] flex gap-3 group relative">
                     <div
                       className="w-0.5 flex-shrink-0 mt-1 rounded-full"
                       style={{ background: agent.color, minHeight: 16 }}
                     />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <div
                         className="text-[9px] tracking-[2px] uppercase mb-1.5"
                         style={{ fontFamily: "var(--font-mono)", color: agent.color }}
@@ -144,12 +179,18 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
                         {agent.name}
                       </div>
                       <div
-                        className="text-[13px] leading-[1.7] whitespace-pre-wrap"
+                        className="text-[13px]"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {msg.content}
+                        <MarkdownMessage
+                          content={msg.content}
+                          isStreaming={isStreaming && isLastAssistant}
+                        />
                       </div>
                     </div>
+                    {msg.content && !isStreaming && (
+                      <MessageCopyButton text={msg.content} />
+                    )}
                   </div>
                 ) : (
                   <div className="max-w-[70%]">
@@ -172,10 +213,11 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
 
-            {/* Typing indicator */}
-            {isLoading && (
+            {/* Typing indicator — only show when loading but NOT yet streaming */}
+            {isLoading && !isStreaming && (
               <div className="flex gap-3">
                 <div
                   className="w-0.5 flex-shrink-0 rounded-full"
