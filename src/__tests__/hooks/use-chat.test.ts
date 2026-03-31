@@ -71,6 +71,21 @@ describe("useChat", () => {
     expect(body.tenderId).toBe(42);
   });
 
+  it("handles SSE data split across chunk boundaries", async () => {
+    // Simulate a chunk boundary splitting an SSE line mid-JSON
+    (global.fetch as any).mockResolvedValue(
+      mockSSEResponse([
+        'data: {"tex',           // chunk 1: partial SSE line
+        't":"hello"}\n\n',       // chunk 2: rest of the line
+        "data: [DONE]\n\n",
+      ])
+    );
+    const { result } = renderHook(() => useChat("profile", 1));
+    await act(async () => { await result.current.sendMessage("Test"); });
+    const assistantMsg = result.current.messages.find((m) => m.role === "assistant");
+    expect(assistantMsg!.content).toBe("hello");
+  });
+
   it("addInitialMessage still works without streaming", () => {
     const { result } = renderHook(() => useChat("profile", 1));
     act(() => { result.current.addInitialMessage("Welcome!"); });

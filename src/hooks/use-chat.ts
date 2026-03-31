@@ -35,19 +35,26 @@ export function useChat(agentId: AgentId, profileId?: number, tenderId?: number)
         setMessages((prev) => [...prev, assistantMessage]);
         setIsStreaming(true);
 
-        const reader = response.body!.getReader();
+        if (!response.body) {
+          throw new Error("Response body is not readable");
+        }
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulated = "";
+        let buffer = "";
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split("\n")) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
             const data = line.slice(6);
-            if (data === "[DONE]") continue;
+            if (data === "[DONE]") break;
 
             try {
               const parsed = JSON.parse(data);
