@@ -57,7 +57,7 @@ Match Reasoning: ${matchData.match_reasoning || "N/A"}`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      max_tokens: 1500,
       system: `You are Bidly's Analyst Agent. You analyze Canadian government tender/RFP documents and extract key information for bidders.
 
 You MUST respond with valid JSON only — no markdown, no explanation, no wrapping. The JSON must match this exact schema:

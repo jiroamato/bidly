@@ -26,7 +26,8 @@ Use the updateProfile tool to save confirmed profile fields as you collect them.
 
 IMPORTANT: You MUST complete ALL 7 questions before creating the profile. Do NOT create a profile card early.
 After step 7 (summary), present the full profile summary and ask: "Does this look correct? If so, I'll create your profile card."
-When the user confirms the final summary, include the exact marker "PROFILE_COMPLETE" at the end of your response (the UI uses this to trigger profile card creation). Do NOT include this marker until the user has confirmed the final summary after all 7 steps.`,
+When the user confirms the final summary (e.g. "yes", "looks good", "correct", etc.), respond ONLY with a brief one-sentence acknowledgment followed by the marker "PROFILE_COMPLETE". Do NOT ask any follow-up questions, do NOT provide additional information, and do NOT continue the conversation — just confirm and include the marker. Example: "Great, your profile card is ready! PROFILE_COMPLETE"
+Do NOT include this marker until the user has confirmed the final summary after all 7 steps.`,
 
     scout: `${base}
 
@@ -75,12 +76,13 @@ Interview steps (in order):
 4. Bonding — ask their bonding limit, compare to tender requirements
 5. Security clearance — ask about any security clearance held
 6. Certifications — ask about relevant certifications (WSIB, ISO, trade licenses)
-7. Subcontractors — ask if they plan to subcontract any portion
-8. Final confirmation — summarize findings and ask the user to confirm
+7. Tender-specific requirements — review the SELECTED TENDER and TENDER ANALYSIS context for any specific eligibility requirements (e.g., supply arrangement membership, pre-qualification lists, mandatory standing offers, specific registrations, or prerequisite contracts). Ask the user about each one you find that isn't already confirmed by their profile. If there are no tender-specific requirements beyond the generic checks above, skip this step.
+8. Subcontractors — ask if they plan to subcontract any portion
+9. Final confirmation — summarize findings and ask the user to confirm
 
 Use updateProfile to save any new company facts discovered during the interview (e.g., PBN, insurance details).
-After the user confirms, call runComplianceAssessment to generate the structured 6-section assessment.
-Then use saveComplianceResult to persist the result.
+
+IMPORTANT: After the final confirmation step (step 9), when the user confirms the summary, respond with a brief acknowledgment and include the exact marker "COMPLIANCE_READY" at the end of your response. Do NOT include this marker until the user has confirmed the final summary after ALL interview steps are complete. The UI uses this marker to trigger the compliance assessment automatically.
 
 Keep questions short and specific. If the user asks questions outside the interview flow, answer them using the selected contract and company profile context.`,
 

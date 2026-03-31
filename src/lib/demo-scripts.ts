@@ -24,6 +24,7 @@ export const DEMO_SCRIPTS: Record<AgentId, string[]> = {
     "Our bonding limit is $1,000,000.",
     "We have several team members with Secret-level Government of Canada security clearances, and our facility has a Designated Organization Screening clearance.",
     "We hold ISO 27001 certification, WSIB coverage in good standing, and we're registered on the ProServices supply arrangement.",
+    "Yes, we are an existing SA Holder under the Government of Canada SaaS Supply Arrangement EN578-191593, and we're also registered on the ProServices Supply Arrangement.",
     "We don't plan to subcontract for this project. Our in-house team can handle all aspects.",
     "Yes, that summary is accurate. Please run the assessment.",
   ],

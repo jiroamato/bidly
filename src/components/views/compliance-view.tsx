@@ -5,6 +5,7 @@ import { ChatInput } from "@/components/chat-input";
 import { ChatMessage } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { consumeSSEStream } from "@/lib/sse";
 
 interface ComplianceViewProps {
   agent: AgentState;
@@ -51,7 +52,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
   const profile = agent.profile;
 
   const initialMessage = tender
-    ? `I'll check your eligibility for "${tender.title}". I need to verify a few things about your company. Let's start -- what is your current commercial liability insurance coverage amount?`
+    ? `I'll check your eligibility for "${tender.title}". I need to verify a few things about your company. Let's start — can you confirm that your company is 100% Canadian-owned and operated?`
     : "I'll help check your eligibility. First, go back and select a tender to assess.";
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -129,37 +130,40 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
         });
 
         if (!res.ok) throw new Error("AI request failed");
-        const data = await res.json();
-        setIsTyping(false);
 
+        const reader = res.body!.getReader();
+
+        // Add placeholder assistant message for streaming
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.content, timestamp: Date.now() },
+          { role: "assistant", content: "", timestamp: Date.now() },
         ]);
+        setIsTyping(false);
 
-        // After 3+ user messages, check if the conversation has enough info
-        const count = updated.filter((m) => m.role === "user").length;
-        if (count >= 3) {
-          const lower = text.toLowerCase();
-          // Use word-boundary regex to avoid false positives on short words
-          const triggerPatterns = [
-            /\byes\b(?:,?\s*(?:run|go|do|please|that'?s))?/,
-            /\bdone\b/,
-            /\bthat'?s all\b/,
-            /\blooks good\b/,
-            /\bcorrect\b/,
-            /\bconfirm\b/,
-            /\bno more\b/,
-            /\bnothing else\b/,
-            /\brun\s+(?:assessment|compliance|check|it)\b/,
-            /\brun\b(?:\s+(?:the|this|my))?\s+(?:assessment|compliance|check)\b/,
-            /\bassess(?:ment)?\b/,
-            /\bgo ahead\b/,
-            /\bcheck compliance\b/,
-          ];
-          if (triggerPatterns.some((pattern) => pattern.test(lower))) {
-            await runComplianceAssessment(updated);
-          }
+        const fullText = await consumeSSEStream(reader, (accumulated) => {
+          setMessages((prev) => {
+            const msgs = [...prev];
+            msgs[msgs.length - 1] = {
+              ...msgs[msgs.length - 1],
+              content: accumulated,
+            };
+            return msgs;
+          });
+        });
+
+        // Check if the agent's response signals the interview is complete
+        // by including the COMPLIANCE_READY marker
+        if (fullText.includes("COMPLIANCE_READY")) {
+          // Remove marker from displayed message
+          setMessages((prev) => {
+            const msgs = [...prev];
+            msgs[msgs.length - 1] = {
+              ...msgs[msgs.length - 1],
+              content: msgs[msgs.length - 1].content.replace("COMPLIANCE_READY", "").trim(),
+            };
+            return msgs;
+          });
+          await runComplianceAssessment(updated);
         }
       } catch {
         setIsTyping(false);

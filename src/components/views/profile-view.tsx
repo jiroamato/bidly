@@ -91,14 +91,25 @@ function ProfileCard({
   onContinue?: () => void;
 }) {
   const parsed = parseCapabilities(profile.capabilities);
-  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <div
-      className="text-[9px] tracking-[2px] uppercase mb-2"
-      style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-    >
-      {children}
-    </div>
-  );
+
+  const formatCurrency = (val: number | null) => {
+    if (!val) return null;
+    return val >= 1_000_000
+      ? `$${(val / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
+      : `$${(val / 1_000).toFixed(0)}K`;
+  };
+
+  const projectRange =
+    profile.project_size_min || profile.project_size_max
+      ? `${formatCurrency(profile.project_size_min) || "—"} – ${formatCurrency(profile.project_size_max) || "—"}`
+      : null;
+
+  const stats = [
+    { label: "Province", value: profile.province },
+    { label: "Years Active", value: profile.years_in_business ? `${profile.years_in_business} yrs` : null },
+    { label: "Project Range", value: projectRange },
+    { label: "Bonding Limit", value: formatCurrency(profile.bonding_limit) },
+  ].filter((s) => s.value);
 
   return (
     <div
@@ -112,167 +123,242 @@ function ProfileCard({
           border: "1px solid var(--bidly-border)",
         }}
       >
+        {/* Top accent bar */}
         <div className="h-1" style={{ background: "var(--agent-profile)" }} />
 
-        <div className="p-8">
-          <div className="flex items-start justify-between mb-6">
+        {/* Header */}
+        <div className="px-8 pt-7 pb-0">
+          <div className="flex items-start justify-between">
             <div>
               <div
                 className="text-[9px] tracking-[2px] uppercase mb-2"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  color: "var(--agent-profile)",
-                }}
+                style={{ fontFamily: "var(--font-mono)", color: "var(--agent-profile)" }}
               >
                 Business Profile
               </div>
               <div
-                className="text-2xl mb-1"
+                className="text-[26px] mb-0.5"
                 style={{
                   fontFamily: "var(--font-heading)",
                   color: "var(--text-primary)",
                   fontWeight: 400,
-                  letterSpacing: "-0.01em",
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.2,
                 }}
               >
                 {profile.company_name}
               </div>
-              <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              <div
+                className="text-[13px] flex items-center gap-2"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 {profile.location || profile.province}
+                {profile.is_canadian && (
+                  <span
+                    className="text-[9px] tracking-[1px] uppercase px-2 py-0.5"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      background: "rgba(230, 126, 34, 0.08)",
+                      color: "var(--agent-profile)",
+                    }}
+                  >
+                    Canadian
+                  </span>
+                )}
               </div>
             </div>
-
-            <div className="flex items-center gap-3 mt-1">
-              {profile.naics_codes.length > 0 && (
-                <div className="flex gap-2">
-                  {profile.naics_codes.map((code) => (
-                    <span
-                      key={code}
-                      className="text-[10px] tracking-[0.5px] px-3 py-1.5"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        background: "var(--bg)",
-                        color: "var(--text-secondary)",
-                        border: "1px solid var(--border-light)",
-                      }}
-                    >
-                      NAICS {code}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {onEdit && (
-                <button
-                  onClick={onEdit}
-                  className="text-[10px] tracking-[1px] uppercase px-4 py-2 border transition-all hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)] hover:shadow-sm"
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    borderColor: "var(--bidly-border)",
-                    background: "var(--white)",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}
-                >
-                  Edit Profile
-                </button>
-              )}
-            </div>
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="text-[10px] tracking-[1px] uppercase px-4 py-2 border transition-all hover:border-[var(--agent-profile)] hover:text-[var(--agent-profile)]"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  borderColor: "var(--bidly-border)",
+                  background: "var(--white)",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                Edit Profile
+              </button>
+            )}
           </div>
+        </div>
 
+        {/* Stats row */}
+        {stats.length > 0 && (
           <div
-            className="mb-6"
-            style={{ borderBottom: "1px solid var(--border-light)" }}
-          />
-
-          <div className="grid grid-cols-[1fr_220px] gap-8">
-            {/* Left column */}
-            <div className="space-y-5">
-              {parsed.services.length > 0 && (
-                <div>
-                  <SectionLabel>Core Services</SectionLabel>
-                  <div
-                    className="text-[14px] leading-[1.8]"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {parsed.services.join(". ")}.
-                  </div>
-                </div>
-              )}
-
-              {parsed.experience.length > 0 && (
-                <div>
-                  <SectionLabel>Experience</SectionLabel>
-                  <div
-                    className="text-[14px] leading-[1.8]"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {parsed.experience.join(". ")}.
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Right column */}
-            <div
-              className="pl-8 space-y-5"
-              style={{ borderLeft: "1px solid var(--border-light)" }}
-            >
-              <div>
-                <SectionLabel>Province</SectionLabel>
+            className="mx-8 mt-5 grid gap-0"
+            style={{
+              gridTemplateColumns: `repeat(${stats.length}, 1fr)`,
+              border: "1px solid var(--border-light)",
+            }}
+          >
+            {stats.map((stat, i) => (
+              <div
+                key={stat.label}
+                className="px-4 py-3.5"
+                style={{
+                  borderRight: i < stats.length - 1 ? "1px solid var(--border-light)" : "none",
+                }}
+              >
                 <div
-                  className="text-sm font-medium"
+                  className="text-[9px] tracking-[1.5px] uppercase mb-1"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                >
+                  {stat.label}
+                </div>
+                <div
+                  className="text-[14px] font-medium"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {profile.province}
+                  {stat.value}
                 </div>
               </div>
-
-              {parsed.contractRange.length > 0 && (
-                <div>
-                  <SectionLabel>Contract Range</SectionLabel>
-                  <div
-                    className="text-sm"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {parsed.contractRange.join(". ")}.
-                  </div>
-                </div>
-              )}
-
-              {parsed.certifications.length > 0 && (
-                <div>
-                  <SectionLabel>Certifications</SectionLabel>
-                  <div
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {parsed.certifications.join(". ")}.
-                  </div>
-                </div>
-              )}
-
-              {profile.keywords.length > 0 && (
-                <div>
-                  <SectionLabel>Keywords</SectionLabel>
-                  <div className="flex flex-wrap gap-1.5">
-                    {profile.keywords.map((kw) => (
-                      <span
-                        key={kw}
-                        className="text-[10px] px-2 py-0.5"
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          background: "var(--bg)",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            ))}
           </div>
+        )}
+
+        {/* Body */}
+        <div className="px-8 pt-6 pb-7">
+          {/* NAICS Codes */}
+          {profile.naics_codes?.length > 0 && (
+            <div className="mb-5">
+              <div
+                className="text-[9px] tracking-[2px] uppercase mb-2.5"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+              >
+                NAICS Classifications
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.naics_codes.map((code) => (
+                  <span
+                    key={code}
+                    className="text-[10px] tracking-[0.5px] px-2.5 py-1"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      background: "var(--bg)",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--border-light)",
+                    }}
+                  >
+                    {code}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Services */}
+          {parsed.services.length > 0 && (
+            <div className="mb-5">
+              <div
+                className="text-[9px] tracking-[2px] uppercase mb-2.5"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+              >
+                Core Services
+              </div>
+              <div
+                className="text-[13.5px] leading-[1.75]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {parsed.services.join(". ")}.
+              </div>
+            </div>
+          )}
+
+          {/* Two-column: Certifications + Experience */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Certifications & Insurance */}
+            {(parsed.certifications.length > 0 || profile.insurance_amount || profile.security_clearance) && (
+              <div>
+                <div
+                  className="text-[9px] tracking-[2px] uppercase mb-2.5"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                >
+                  Certifications & Insurance
+                </div>
+                <div className="space-y-1.5">
+                  {parsed.certifications.map((cert, i) => (
+                    <div
+                      key={i}
+                      className="text-[13px] flex items-start gap-2"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      <span className="mt-0.5 text-[10px]" style={{ color: "var(--success)" }}>&#10003;</span>
+                      {cert}
+                    </div>
+                  ))}
+                  {profile.insurance_amount && (
+                    <div
+                      className="text-[13px] flex items-start gap-2"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      <span className="mt-0.5 text-[10px]" style={{ color: "var(--success)" }}>&#10003;</span>
+                      Liability: {profile.insurance_amount}
+                    </div>
+                  )}
+                  {profile.security_clearance && (
+                    <div
+                      className="text-[13px] flex items-start gap-2"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      <span className="mt-0.5 text-[10px]" style={{ color: "var(--success)" }}>&#10003;</span>
+                      {profile.security_clearance}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Government Experience */}
+            {(parsed.experience.length > 0 || profile.past_gov_experience) && (
+              <div>
+                <div
+                  className="text-[9px] tracking-[2px] uppercase mb-2.5"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                >
+                  Government Experience
+                </div>
+                <div
+                  className="text-[13px] leading-[1.75]"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {parsed.experience.length > 0
+                    ? `${parsed.experience.join(". ")}.`
+                    : profile.past_gov_experience}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Keywords */}
+          {profile.keywords?.length > 0 && (
+            <div className="mt-5 pt-5" style={{ borderTop: "1px solid var(--border-light)" }}>
+              <div
+                className="text-[9px] tracking-[2px] uppercase mb-2.5"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+              >
+                Search Keywords
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {profile.keywords.map((kw) => (
+                  <span
+                    key={kw}
+                    className="text-[10px] px-2.5 py-1"
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      background: "rgba(230, 126, 34, 0.06)",
+                      color: "var(--agent-profile)",
+                      border: "1px solid rgba(230, 126, 34, 0.15)",
+                    }}
+                  >
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -301,6 +387,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
     { role: "assistant", content: INITIAL_MESSAGE, timestamp: Date.now() },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -314,7 +401,30 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, showProfile, isTyping]);
+  }, [messages, showProfile, isTyping, isGenerating]);
+
+  // Create an empty profile row on mount for new users so we have a profile_id
+  // for updateProfile tool calls during the conversation
+  useEffect(() => {
+    if (agent.profile?.id) return; // already have one
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ company_name: "" }),
+        });
+        if (res.ok && !cancelled) {
+          const saved = await res.json();
+          if (saved?.id) agent.setProfile(saved);
+        }
+      } catch {
+        // non-critical — extraction fallback still works
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track whether province was already mentioned in first message
   const [provinceFromInput, setProvinceFromInput] = useState<string | null>(null);
@@ -426,7 +536,16 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         // during the conversation — just fetch it directly instead of making
         // another Claude call to extract JSON.
         if (streamedText.includes("PROFILE_COMPLETE")) {
-          await finalizeProfile();
+          // Remove the final assistant message (just an acknowledgment)
+          // and show the generating indicator instead
+          setMessages((prev) => prev.slice(0, -1));
+          setIsGenerating(true);
+          try {
+            const minDelay = new Promise((r) => setTimeout(r, 2000));
+            await Promise.all([finalizeProfile(), minDelay]);
+          } finally {
+            setIsGenerating(false);
+          }
         }
       } catch {
         setIsTyping(false);
@@ -444,26 +563,25 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   );
 
   const finalizeProfile = useCallback(async () => {
-    // If user already has a profile (editing flow), fetch the updated version
-    if (agent.profile?.id) {
-      try {
-        const res = await fetch("/api/profile");
-        if (res.ok) {
-          const profile = await res.json();
-          if (profile?.id && profile.company_name) {
-            agent.setProfile(profile);
-            setIsComplete(true);
-            setEditMode(false);
-            agent.completeAgent("profile");
-            setTimeout(() => setShowProfile(true), 400);
-            return;
-          }
+    // Always try fetching from Supabase first — updateProfile tool calls
+    // during the conversation should have already created/updated the row.
+    try {
+      const res = await fetch("/api/profile");
+      if (res.ok) {
+        const profile = await res.json();
+        if (profile?.id && profile.company_name && profile.capabilities) {
+          agent.setProfile(profile);
+          setIsComplete(true);
+          setEditMode(false);
+          agent.completeAgent("profile");
+          setTimeout(() => setShowProfile(true), 400);
+          return;
         }
-      } catch (err) {
-        console.error("Profile fetch failed, falling back to extraction:", err);
       }
+    } catch (err) {
+      console.error("Profile fetch failed, falling back to extraction:", err);
     }
-    // New user or fetch failed: extract profile from conversation and create it
+    // Fallback: no profile in DB yet — extract from conversation and create it
     await extractAndSaveProfile(messagesRef.current);
   }, [agent]);
 
@@ -762,6 +880,36 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
                       }}
                     />
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Generating profile indicator */}
+          {isGenerating && (
+            <div className="flex justify-start">
+              <div className="flex gap-4">
+                <div
+                  className="w-0.5 flex-shrink-0"
+                  style={{
+                    background: "var(--agent-profile)",
+                    borderRadius: 1,
+                    minHeight: 20,
+                  }}
+                />
+                <div>
+                  <div
+                    className="text-[9px] tracking-[2px] uppercase mb-2"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--agent-profile)" }}
+                  >
+                    Profile Agent
+                  </div>
+                  <div
+                    className="text-[13px]"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                  >
+                    Creating your profile card...
+                  </div>
                 </div>
               </div>
             </div>

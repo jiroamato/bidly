@@ -15,9 +15,10 @@ export default function Home() {
   const agent = useAgent();
 
   const [demoInputValue, setDemoInputValue] = useState<string | undefined>(undefined);
-  const demoScript = useDemoScript(agent.activeAgent, (text: string) => {
+  const fillDemoInput = useCallback((text: string) => {
     setDemoInputValue(text);
-  });
+  }, []);
+  const demoScript = useDemoScript(agent.activeAgent, fillDemoInput);
 
   // Clear external value when switching agents
   useEffect(() => {
