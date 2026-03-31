@@ -32,8 +32,10 @@ const mockFrom = vi.fn(() => ({
   update: mockUpdate,
 }));
 
+const mockRpc = vi.fn(() => ({ data: [], error: null }));
+
 vi.mock("@/lib/supabase", () => ({
-  createServerClient: () => ({ from: mockFrom }),
+  createServerClient: () => ({ from: mockFrom, rpc: mockRpc }),
 }));
 
 const { handleToolCall } = await import("@/lib/ai/tool-handlers");
@@ -46,16 +48,18 @@ describe("matchTendersToProfile", () => {
       data: {
         province: "Saskatchewan",
         keywords: ["janitorial", "cleaning"],
+        keyword_synonyms: {},
+        embedding: null,
       },
       error: null,
     });
-    mockLimit.mockReturnValue({ data: [{ id: 1, title: "Test Tender" }], error: null });
+    mockRpc.mockResolvedValue({ data: [{ id: 1, title: "Test Tender", description: "janitorial services" }], error: null });
 
     const result = await handleToolCall("matchTendersToProfile", { profile_id: 1, limit: 20 });
     const parsed = JSON.parse(result);
 
     expect(mockFrom).toHaveBeenCalledWith("business_profiles");
-    expect(mockFrom).toHaveBeenCalledWith("tenders");
+    expect(mockRpc).toHaveBeenCalledWith("tenders_by_region", { target_province: "Saskatchewan" });
   });
 
   it("returns error when profile not found", async () => {
