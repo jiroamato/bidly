@@ -422,12 +422,11 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         }
 
         // Check if the assistant's streamed response signals the profile is complete.
+        // Profile data was already saved to Supabase via updateProfile tool calls
+        // during the conversation — just fetch it directly instead of making
+        // another Claude call to extract JSON.
         if (streamedText.includes("PROFILE_COMPLETE")) {
-          const allMessages = [
-            ...updated,
-            { role: "assistant" as const, content: streamedText.replace("PROFILE_COMPLETE", "").trim(), timestamp: Date.now() },
-          ];
-          await extractAndSaveProfile(allMessages);
+          await finalizeProfile();
         }
       } catch {
         setIsTyping(false);
@@ -443,6 +442,29 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
     },
     [isComplete, saveProfile, agent.profile?.id]
   );
+
+  const finalizeProfile = useCallback(async () => {
+    try {
+      // Profile data was saved to Supabase during the conversation via
+      // updateProfile tool calls. Just fetch the latest version.
+      const res = await fetch("/api/profile");
+      if (res.ok) {
+        const profile = await res.json();
+        if (profile?.id) {
+          agent.setProfile(profile);
+          setIsComplete(true);
+          setEditMode(false);
+          agent.completeAgent("profile");
+          setTimeout(() => setShowProfile(true), 400);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Profile fetch failed, falling back to extraction:", err);
+    }
+    // Fallback: extract from conversation if fetch fails
+    await extractAndSaveProfile(messagesRef.current);
+  }, [agent]);
 
   const extractAndSaveProfile = async (conversation: ChatMessage[]) => {
     try {
