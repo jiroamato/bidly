@@ -2,7 +2,7 @@ import type { AgentId } from "./types";
 
 export const DEMO_SCRIPTS: Record<AgentId, string[]> = {
   profile: [
-    "Our company is Northpoint Digital Solutions, and we're based in Ottawa, Ontario.",
+    "Our company is Northpoint Digital Solutions.",
     "We specialize in professional services for the Government of Canada. Our core capabilities include software maintenance and support, IT systems management and helpdesk support, data processing and analytics, information technology audit services, change management consulting, training and professional development delivery, equipment supply and maintenance, and construction project management. We also provide temporary help services, supply arrangement management, and system replacement project support.",
     "Yes, those NAICS codes look correct.",
     "We've been in business for 12 years. Our typical project size ranges from $50,000 for smaller consulting engagements up to $2,000,000 for large systems integration projects.",

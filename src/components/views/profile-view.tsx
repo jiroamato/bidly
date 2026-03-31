@@ -22,6 +22,33 @@ const PROVINCE_OPTIONS = [
   "Newfoundland", "PEI", "Yukon", "NWT", "Nunavut",
 ];
 
+const PROVINCE_ALIASES: Record<string, string[]> = {
+  "Ontario": ["ontario", "\\bon\\b"],
+  "British Columbia": ["british columbia", "\\bbc\\b"],
+  "Alberta": ["alberta", "\\bab\\b"],
+  "Quebec": ["quebec", "québec", "\\bqc\\b"],
+  "Manitoba": ["manitoba", "\\bmb\\b"],
+  "Saskatchewan": ["saskatchewan", "\\bsk\\b"],
+  "Nova Scotia": ["nova scotia", "\\bns\\b"],
+  "New Brunswick": ["new brunswick", "\\bnb\\b"],
+  "Newfoundland": ["newfoundland", "\\bnl\\b"],
+  "PEI": ["prince edward island", "\\bpei\\b"],
+  "Yukon": ["yukon", "\\byt\\b"],
+  "NWT": ["northwest territories", "\\bnwt\\b"],
+  "Nunavut": ["nunavut", "\\bnu\\b"],
+};
+
+/** Check if text mentions a Canadian province. Returns the province name or null. */
+export function detectProvince(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const [province, aliases] of Object.entries(PROVINCE_ALIASES)) {
+    for (const alias of aliases) {
+      if (new RegExp(alias, "i").test(lower)) return province;
+    }
+  }
+  return null;
+}
+
 /* ---------- PARSE CAPABILITIES INTO SECTIONS ---------- */
 
 function parseCapabilities(text: string) {
@@ -288,6 +315,9 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, showProfile, isTyping]);
 
+  // Track whether province was already mentioned in first message
+  const [provinceFromInput, setProvinceFromInput] = useState<string | null>(null);
+
   // Step progress based on user message count
   const userMessageCount = messages.filter((m) => m.role === "user").length;
   const completedSteps = Math.min(userMessageCount, STEP_LABELS.length);
@@ -335,8 +365,22 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
       if (isComplete) return;
 
       const userMsg: ChatMessage = { role: "user", content: text, timestamp: Date.now() };
-      const updated = [...messagesRef.current, userMsg];
+      let updated = [...messagesRef.current, userMsg];
       setMessages(updated);
+
+      // If this is the first message, check if the user mentioned a province
+      const currentUserCount = updated.filter((m) => m.role === "user").length;
+      if (currentUserCount === 1) {
+        const detected = detectProvince(text);
+        if (detected) {
+          setProvinceFromInput(detected);
+          // Auto-inject province as the second user message to skip the picker
+          const provinceMsg: ChatMessage = { role: "user", content: detected, timestamp: Date.now() };
+          updated = [...updated, provinceMsg];
+          setMessages(updated);
+        }
+      }
+
       setIsTyping(true);
 
       try {
@@ -625,8 +669,9 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
                       {msg.content}
                     </div>
 
-                    {/* Province buttons — step 1 */}
+                    {/* Province buttons — step 1, hidden if province already mentioned */}
                     {completedSteps === 1 &&
+                      !provinceFromInput &&
                       i === messages.length - 1 &&
                       !isTyping && (
                         <div className="flex flex-wrap gap-2 mt-4">
