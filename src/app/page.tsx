@@ -26,10 +26,9 @@ export default function Home() {
 
   const handleDemoReset = useCallback(async () => {
     try {
-      const res = await fetch("/api/profile", { method: "DELETE" });
-      if (!res.ok) return;
+      await fetch("/api/profile", { method: "DELETE" });
     } catch {
-      return;
+      // Server delete failed — still reset client state
     }
     agent.resetDemo();
     demoScript.resetScripts();
