@@ -95,7 +95,7 @@ async function getCompanyProfile(input: Record<string, any>): Promise<string> {
 }
 
 async function matchTendersToProfile(input: Record<string, any>): Promise<string> {
-  const { profile_id, limit = 20 } = input;
+  const { profile_id, limit = 200 } = input;
 
   // Fetch profile
   const { data: profile, error: profileError } = await supabase
@@ -108,27 +108,34 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
     return JSON.stringify({ error: profileError?.message || "Profile not found" });
   }
 
-  // Query tenders matching profile's province or national scope
-  // The CSV uses broad region names like "Canada", "Ontario", "National Capital Region (NCR)"
-  // Match tenders that deliver to the profile's province OR to all of Canada
-  const province = profile.province || "";
-  const { data, error } = await supabase
-    .from("tenders")
-    .select("*")
-    .or(`regions_of_delivery.cs.{"${province}"},regions_of_delivery.cs.{"Canada"}`)
-    .order("closing_date", { ascending: true })
-    .limit(limit);
-  if (error) return JSON.stringify({ error: error.message });
+  // Fetch region-filtered tenders via Postgres function
+  const { data: tenders, error: tenderError } = await supabase
+    .rpc("tenders_by_region", { target_province: profile.province || "" });
 
-  // Score results by keyword overlap with title/description
-  const keywords = (profile.keywords || []).map((k: string) => k.toLowerCase());
-  const scored = (data || []).map((t: any) => {
-    const text = `${t.title} ${t.description}`.toLowerCase();
-    const matched = keywords.filter((k: string) => text.includes(k));
-    return { ...t, match_score: matched.length > 0 ? Math.round((matched.length / Math.max(keywords.length, 1)) * 100) : 0, matched_keywords: matched };
-  });
-  scored.sort((a: any, b: any) => b.match_score - a.match_score);
-  return JSON.stringify(scored);
+  if (tenderError) return JSON.stringify({ error: tenderError.message });
+
+  // Fetch embedding similarities if profile has an embedding
+  let embeddingSimilarities = new Map<number, number>();
+  if (profile.embedding) {
+    const { data: similarities } = await supabase
+      .rpc("match_tenders_by_embedding", {
+        query_embedding: JSON.stringify(profile.embedding),
+        match_count: (tenders || []).length,
+      });
+
+    if (similarities) {
+      for (const row of similarities) {
+        embeddingSimilarities.set(row.tender_id, row.similarity);
+      }
+    }
+  }
+
+  // Score using shared module
+  const { combineTenderScores } = await import("@/lib/matching/score-tenders");
+  const scored = combineTenderScores(profile, tenders || [], embeddingSimilarities);
+
+  // Respect limit
+  return JSON.stringify(scored.slice(0, limit));
 }
 
 async function filterTenders(input: Record<string, any>): Promise<string> {

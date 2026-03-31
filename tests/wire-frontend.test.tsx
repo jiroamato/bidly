@@ -52,7 +52,7 @@ function makeAgentState(overrides = {}) {
     profile: {
       id: 1, company_name: "Test Corp", naics_codes: ["238220"],
       location: "Toronto", province: "Ontario", capabilities: "Plumbing",
-      keywords: ["plumbing"], created_at: "2026-01-01",
+      keywords: ["plumbing"], keyword_synonyms: {}, embedding: null, created_at: "2026-01-01",
     },
     selectedTender: {
       id: 42, reference_number: "REF-001", solicitation_number: "SOL-001",
@@ -96,7 +96,7 @@ describe("ScoutView — API wiring", () => {
       render(<ScoutView agent={makeAgentState()} />);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/tenders");
+    expect(mockFetch).toHaveBeenCalledWith("/api/tenders/match?profileId=1");
   });
 
   it("shows loading state before tenders arrive", async () => {

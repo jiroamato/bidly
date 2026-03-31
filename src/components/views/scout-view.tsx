@@ -10,7 +10,12 @@ interface ScoutViewProps {
   externalValue?: string;
 }
 
-type TenderWithScore = Tender & { match_score: number };
+type TenderWithScore = Tender & {
+  match_score: number;
+  keyword_score: number;
+  embedding_score: number;
+  matched_keywords: string[];
+};
 
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
@@ -19,26 +24,23 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
   const [tenders, setTenders] = useState<TenderWithScore[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch tenders from API — scores come from the AI via match_score field
+  const profileId = agent.profile?.id;
+
+  // Fetch scored tenders from match endpoint
   const loadTenders = useCallback(async () => {
+    if (!profileId) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/tenders");
+      const res = await fetch(`/api/tenders/match?profileId=${profileId}`);
       if (!res.ok) throw new Error("Failed to load tenders");
-      const data: Tender[] = await res.json();
-      // Use match_score from the API if available, default to 0
-      const scored: TenderWithScore[] = data.map((t) => ({
-        ...t,
-        match_score: t.match_score ?? 0,
-      }));
-      scored.sort((a, b) => b.match_score - a.match_score);
-      setTenders(scored);
+      const data = await res.json();
+      setTenders(data as TenderWithScore[]);
     } catch (err) {
       console.error("Failed to load tenders:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profileId]);
 
   useEffect(() => {
     loadTenders();

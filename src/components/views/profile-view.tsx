@@ -415,7 +415,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
             {
               role: "user",
               content:
-                'Extract the company profile from our conversation as JSON: {"company_name":"","naics_codes":[],"location":"","province":"","capabilities":"","keywords":[]}. Return ONLY valid JSON.',
+                'Extract the company profile from our conversation as JSON: {"company_name":"","naics_codes":[],"location":"","province":"","capabilities":"","keywords":[],"keyword_synonyms":{}}. For keyword_synonyms, map each keyword to an array of 2-4 alternative phrasings or related terms (e.g. "cybersecurity": ["cyber security", "IT security", "infosec"]). Return ONLY valid JSON.',
               timestamp: Date.now(),
             },
           ],
