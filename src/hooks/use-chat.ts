@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { AgentId, ChatMessage } from "@/lib/types";
+import { consumeSSEStream } from "@/lib/sse";
 
 export function useChat(agentId: AgentId, profileId?: number, tenderId?: number) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -42,8 +43,6 @@ export function useChat(agentId: AgentId, profileId?: number, tenderId?: number)
 
         // Stream SSE response
         const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
 
         // Add an empty assistant message to fill incrementally
         const assistantMessage: ChatMessage = {
@@ -54,38 +53,16 @@ export function useChat(agentId: AgentId, profileId?: number, tenderId?: number)
         setMessages((prev) => [...prev, assistantMessage]);
 
         if (reader) {
-          let buffer = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
-
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6);
-                if (data === "[DONE]") break;
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.text) {
-                    fullText += parsed.text;
-                    setMessages((prev) => {
-                      const updated = [...prev];
-                      updated[updated.length - 1] = {
-                        ...updated[updated.length - 1],
-                        content: fullText,
-                      };
-                      return updated;
-                    });
-                  }
-                } catch {
-                  // skip malformed chunks
-                }
-              }
-            }
-          }
+          await consumeSSEStream(reader, (accumulated) => {
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                content: accumulated,
+              };
+              return updated;
+            });
+          });
         }
       } catch (err: any) {
         setError(err.message);
