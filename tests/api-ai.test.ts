@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Separate mock functions so we can inspect calls
-const mockCreate = vi.fn().mockResolvedValue({
-  stop_reason: "end_turn",
-  content: [{ type: "text", text: "Hello from Claude" }],
-});
-
+const mockCreate = vi.fn();
 const mockStream = vi.fn();
 
 vi.mock("@anthropic-ai/sdk", () => {
@@ -74,30 +70,21 @@ async function collectSSE(res: Response): Promise<{ text: string; error?: string
   return { text: fullText, error };
 }
 
-function makeDefaultStreamMock() {
-  return {
-    [Symbol.asyncIterator]: async function* () {
-      yield { type: "content_block_delta", delta: { type: "text_delta", text: "Hello " } };
-      yield { type: "content_block_delta", delta: { type: "text_delta", text: "from Claude" } };
-      yield { type: "message_stop" };
-    },
-    finalMessage: vi.fn().mockResolvedValue({
-      stop_reason: "end_turn",
-      content: [{ type: "text", text: "Hello from Claude" }],
-    }),
-  };
-}
-
 describe("POST /api/ai", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: create returns end_turn so no tool loop
-    mockCreate.mockResolvedValue({
-      stop_reason: "end_turn",
-      content: [{ type: "text", text: "Hello from Claude" }],
+    // Default: stream returns text with no tool use
+    mockStream.mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: "content_block_delta", delta: { type: "text_delta", text: "Hello " } };
+        yield { type: "content_block_delta", delta: { type: "text_delta", text: "from Claude" } };
+        yield { type: "message_stop" };
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Hello from Claude" }],
+      }),
     });
-    // Default stream mock
-    mockStream.mockReturnValue(makeDefaultStreamMock());
   });
 
   it("accepts profileId and tenderId instead of profileContext", async () => {
@@ -128,10 +115,10 @@ describe("POST /api/ai", () => {
     expect(mockBuildAgentContext).toHaveBeenCalledWith("profile", 1, undefined);
   });
 
-  it("returns 200 with SSE-streamed content from real Anthropic streaming", async () => {
+  it("streams directly from initial .stream() when no tool use", async () => {
     const res = await POST(
       makeRequest({
-        agentId: "scout",
+        agentId: "profile",
         messages: [{ role: "user", content: "Hello", timestamp: 1 }],
         profileId: 1,
       }) as any
@@ -143,34 +130,34 @@ describe("POST /api/ai", () => {
     const { text } = await collectSSE(res);
     expect(text).toBe("Hello from Claude");
 
-    // Verify .stream() was called for final response
+    // Only .stream() called — no .create() needed
     expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("uses .create() for tool-use iterations then .stream() for final response", async () => {
-    // First create call returns tool_use
-    mockCreate.mockResolvedValueOnce({
-      stop_reason: "tool_use",
-      content: [
-        { type: "text", text: "Let me look that up." },
-        { type: "tool_use", id: "tool_1", name: "search_tenders", input: { query: "test" } },
-      ],
+  it("uses .stream() for initial call then .create() for tool loop", async () => {
+    // Initial .stream() returns tool_use
+    mockStream.mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: "content_block_delta", delta: { type: "text_delta", text: "Let me check." } };
+        yield { type: "message_stop" };
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "Let me check." },
+          { type: "tool_use", id: "tool_1", name: "search_tenders", input: { query: "test" } },
+        ],
+      }),
     });
-    // Second create call returns end_turn (tool loop done)
+
+    // .create() in tool loop returns final text
     mockCreate.mockResolvedValueOnce({
       stop_reason: "end_turn",
-      content: [{ type: "text", text: "Here are the results" }],
+      content: [{ type: "text", text: "Here are the results." }],
     });
 
     mockHandleToolCall.mockResolvedValue("tool result data");
-
-    mockStream.mockReturnValue({
-      [Symbol.asyncIterator]: async function* () {
-        yield { type: "content_block_delta", delta: { type: "text_delta", text: "Here are " } };
-        yield { type: "content_block_delta", delta: { type: "text_delta", text: "the results" } };
-        yield { type: "message_stop" };
-      },
-    });
 
     const res = await POST(
       makeRequest({
@@ -183,16 +170,30 @@ describe("POST /api/ai", () => {
     expect(res.status).toBe(200);
 
     const { text } = await collectSSE(res);
-    expect(text).toBe("Here are the results");
+    // Should contain initial streamed text + final tool loop text
+    expect(text).toContain("Let me check.");
+    expect(text).toContain("Here are the results.");
 
-    // create() called twice: initial + one tool-loop iteration
-    expect(mockCreate).toHaveBeenCalledTimes(2);
-    // stream() called once for the final streamed response
+    // .stream() called once for initial, .create() once for tool loop
     expect(mockStream).toHaveBeenCalledTimes(1);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 
-  it("returns 500 when max tool iterations exceeded", async () => {
-    // Every create call returns tool_use to trigger infinite loop
+  it("returns error event when max tool iterations exceeded", async () => {
+    // Initial stream returns tool_use
+    mockStream.mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: "message_stop" };
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        stop_reason: "tool_use",
+        content: [
+          { type: "tool_use", id: "tool_1", name: "search_tenders", input: { query: "test" } },
+        ],
+      }),
+    });
+
+    // Every .create() returns tool_use to trigger the limit
     mockCreate.mockResolvedValue({
       stop_reason: "tool_use",
       content: [
@@ -209,9 +210,9 @@ describe("POST /api/ai", () => {
       }) as any
     );
 
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.error).toMatch(/too many tool iterations/i);
+    expect(res.status).toBe(200);
+    const { error } = await collectSSE(res);
+    expect(error).toMatch(/too many tool iterations/i);
   });
 
   it("sends error event in SSE when streaming fails", async () => {
@@ -219,6 +220,7 @@ describe("POST /api/ai", () => {
       [Symbol.asyncIterator]: async function* () {
         throw new Error("Stream connection lost");
       },
+      finalMessage: vi.fn().mockRejectedValue(new Error("Stream connection lost")),
     });
 
     const res = await POST(
