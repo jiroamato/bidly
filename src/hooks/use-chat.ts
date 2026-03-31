@@ -41,15 +41,29 @@ export function useChat(agentId: AgentId, profileId?: number, tenderId?: number)
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulated = "";
-        let buffer = "";
+        let sseBuffer = "";
+        let rafScheduled = false;
+
+        const flushToState = () => {
+          rafScheduled = false;
+          const content = accumulated;
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.role === "assistant") {
+              copy[copy.length - 1] = { ...last, content };
+            }
+            return copy;
+          });
+        };
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split("\n");
+          sseBuffer = lines.pop() || "";
 
           for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
@@ -64,19 +78,16 @@ export function useChat(agentId: AgentId, profileId?: number, tenderId?: number)
               }
               if (parsed.text) {
                 accumulated += parsed.text;
-                const updatedContent = accumulated;
-                setMessages((prev) => {
-                  const copy = [...prev];
-                  const last = copy[copy.length - 1];
-                  if (last && last.role === "assistant") {
-                    copy[copy.length - 1] = { ...last, content: updatedContent };
-                  }
-                  return copy;
-                });
+                if (!rafScheduled) {
+                  rafScheduled = true;
+                  requestAnimationFrame(flushToState);
+                }
               }
             } catch { /* skip malformed chunks */ }
           }
         }
+        // Final flush to ensure all accumulated text is rendered
+        flushToState();
       } catch (err: any) {
         setError(err.message);
       } finally {
