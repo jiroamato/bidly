@@ -29,10 +29,17 @@ const NAICS_TO_CATEGORIES: Record<string, string[]> = {
   "92": ["Services", "Public Administration"],
 };
 
+/**
+ * Maps procurement category codes to normalized category names.
+ * Canadian government tenders use codes like "*SRV", "*GD", "*CNST", "*SRVTGD".
+ */
 const PROCUREMENT_CODE_MAP: Record<string, string[]> = {
   srv: ["services"],
   gds: ["goods"],
+  gd: ["goods"],
   con: ["construction"],
+  cnst: ["construction"],
+  srvtgd: ["services", "goods"],
 };
 
 export function naicsToCategories(naicsCodes: string[]): string[] {
@@ -59,7 +66,8 @@ export function scoreCategory(
     return { score: 0, profileCategories, tenderCategory };
   }
 
-  const normalizedTender = tenderCategory.toLowerCase().trim();
+  // Strip leading * and normalize (e.g., "*SRV" -> "srv")
+  const normalizedTender = tenderCategory.toLowerCase().trim().replace(/^\*/, "");
 
   const expandedTenderCategories = PROCUREMENT_CODE_MAP[normalizedTender] || [
     normalizedTender,

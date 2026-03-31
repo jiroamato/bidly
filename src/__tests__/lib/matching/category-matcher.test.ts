@@ -72,4 +72,15 @@ describe("scoreCategory", () => {
     const result = scoreCategory(["541510"], "SRV");
     expect(result.score).toBe(100);
   });
+
+  it("strips leading * from procurement codes (*SRV, *GD, *CNST)", () => {
+    expect(scoreCategory(["541510"], "*SRV").score).toBe(100);
+    expect(scoreCategory(["236220"], "*CNST").score).toBe(100);
+    expect(scoreCategory(["334110"], "*GD").score).toBe(100);
+  });
+
+  it("handles combined code *SRVTGD", () => {
+    const result = scoreCategory(["541510"], "*SRVTGD");
+    expect(result.score).toBe(100);
+  });
 });
