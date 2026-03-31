@@ -3,11 +3,11 @@ import type { AgentId } from "./types";
 export const DEMO_SCRIPTS: Record<AgentId, string[]> = {
   profile: [
     "Our company is Northpoint Digital Solutions, and we're based in Ottawa, Ontario.",
-    "We specialize in IT consulting and systems integration for enterprise environments. Our core services include cloud migration and infrastructure modernization, cybersecurity assessments and compliance auditing, custom software development using .NET, Java, and Python, network architecture design and implementation, and IT service management and helpdesk solutions. We also do data analytics and business intelligence reporting.",
+    "We specialize in professional services for the Government of Canada. Our core capabilities include software maintenance and support, IT systems management and helpdesk support, data processing and analytics, information technology audit services, change management consulting, training and professional development delivery, equipment supply and maintenance, and construction project management. We also provide temporary help services, supply arrangement management, and system replacement project support.",
     "Yes, those NAICS codes look correct.",
     "We've been in business for 12 years. Our typical project size ranges from $50,000 for smaller consulting engagements up to $2,000,000 for large systems integration projects.",
     "We have WSIB coverage in good standing, a bonding limit of $1,000,000, and professional liability insurance of $5,000,000. We also hold ISO 27001 certification for information security management, and several of our team members have Secret-level Government of Canada security clearances.",
-    "Yes, we've completed several government contracts. We did a cloud migration project for Shared Services Canada worth about $800,000, a cybersecurity audit for the Canada Revenue Agency, and we currently have a standing offer for IT helpdesk support with Public Services and Procurement Canada. We've been on the ProServices supply arrangement for the past 4 years.",
+    "Yes, we've completed several government contracts. We did a software maintenance and support project for Shared Services Canada worth about $800,000, an information technology audit for the Canada Revenue Agency, and we currently have a standing offer for professional services and temporary help with Public Services and Procurement Canada. We've been on the ProServices supply arrangement for the past 4 years.",
     "Yes, that looks accurate. Please save the profile.",
   ],
   scout: [
