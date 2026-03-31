@@ -108,15 +108,16 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
     return JSON.stringify({ error: profileError?.message || "Profile not found" });
   }
 
-  // Query tenders matching profile's province
-  let q = supabase
+  // Query tenders matching profile's province or national scope
+  // The CSV uses broad region names like "Canada", "Ontario", "National Capital Region (NCR)"
+  // Match tenders that deliver to the profile's province OR to all of Canada
+  const province = profile.province || "";
+  const { data, error } = await supabase
     .from("tenders")
     .select("*")
-    .contains("regions_of_delivery", [profile.province])
+    .or(`regions_of_delivery.cs.{"${province}"},regions_of_delivery.cs.{"Canada"}`)
     .order("closing_date", { ascending: true })
     .limit(limit);
-
-  const { data, error } = await q;
   if (error) return JSON.stringify({ error: error.message });
 
   // Score results by keyword overlap with title/description
