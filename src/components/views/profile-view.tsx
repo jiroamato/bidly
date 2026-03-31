@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
+import { consumeSSEStream } from "@/lib/sse";
 
 interface ProfileViewProps {
   agent: AgentState;
@@ -353,8 +354,6 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
 
         // Stream the response
         const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
 
         setIsTyping(false);
         setMessages((prev) => [
@@ -363,36 +362,16 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         ]);
 
         if (reader) {
-          let buffer = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6);
-                if (data === "[DONE]") break;
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.text) {
-                    fullText += parsed.text;
-                    setMessages((prev) => {
-                      const msgs = [...prev];
-                      msgs[msgs.length - 1] = {
-                        ...msgs[msgs.length - 1],
-                        content: fullText,
-                      };
-                      return msgs;
-                    });
-                  }
-                } catch {
-                  // skip malformed chunks
-                }
-              }
-            }
-          }
+          await consumeSSEStream(reader, (accumulated) => {
+            setMessages((prev) => {
+              const msgs = [...prev];
+              msgs[msgs.length - 1] = {
+                ...msgs[msgs.length - 1],
+                content: accumulated,
+              };
+              return msgs;
+            });
+          });
         }
 
         // After 4+ user messages and a confirmation word, extract profile
@@ -446,27 +425,9 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
 
       // Read SSE stream to collect full text
       const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
       let fullText = "";
       if (reader) {
-        let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") break;
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.text) fullText += parsed.text;
-              } catch { /* skip */ }
-            }
-          }
-        }
+        fullText = await consumeSSEStream(reader, () => {});
       }
 
       const jsonStr = fullText
