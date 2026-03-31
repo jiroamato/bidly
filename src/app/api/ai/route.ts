@@ -94,33 +94,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Extract text from the final (already-received) response
-    const textContent = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
-
-    // NOTE: This is a simulated typewriter stream for demo purposes.
-    // The full Anthropic response has already been collected above.
-    // For real streaming, use the Anthropic SDK's `stream: true` option.
+    // Stream the final response using real Anthropic streaming
     const encoder = new TextEncoder();
-    const CHUNK_SIZE = 4;
     const readable = new ReadableStream({
-      start(controller) {
-        let i = 0;
-        const interval = setInterval(() => {
-          if (i >= textContent.length) {
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-            controller.close();
-            clearInterval(interval);
-            return;
+      async start(controller) {
+        try {
+          const stream = anthropic.messages.stream({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 4096,
+            system: systemPrompt,
+            tools: tools.length > 0 ? tools : undefined,
+            messages: loopMessages,
+          });
+
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
+              );
+            }
           }
-          const chunk = textContent.slice(i, i + CHUNK_SIZE);
+
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        } catch (err: any) {
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`)
           );
-          i += CHUNK_SIZE;
-        }, 5);
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
       },
     });
 
