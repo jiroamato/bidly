@@ -33,7 +33,11 @@ function makeAgentState(overrides = {}) {
     profile: {
       id: 1, company_name: "Test Corp", naics_codes: ["238220"],
       location: "Toronto", province: "Ontario", capabilities: "Plumbing",
-      keywords: ["plumbing"], created_at: "2026-01-01",
+      keywords: ["plumbing"], keyword_synonyms: {}, embedding: null,
+      insurance_amount: "$1M", bonding_limit: 100000, certifications: [],
+      years_in_business: 5, past_gov_experience: "", pbn: "",
+      is_canadian: true, security_clearance: "", project_size_min: null,
+      project_size_max: null, created_at: "2026-01-01",
     },
     selectedTender: {
       id: 42, reference_number: "REF-001", solicitation_number: "SOL-001",
@@ -52,6 +56,7 @@ function makeAgentState(overrides = {}) {
     completeAgent: vi.fn(),
     setProfile: vi.fn(),
     setSelectedTender: vi.fn(),
+    resetDemo: vi.fn(),
     ...overrides,
   };
 }
@@ -251,6 +256,20 @@ describe("ProfileView — API wiring", () => {
 
 describe("AnalystView — chat wiring", () => {
   it("renders chat input that is not disabled", async () => {
+    // Mock fetch to return analysis data so the component exits loading state
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        analysis: {
+          whatTheyWant: ["Item A"],
+          deadlines: [],
+          forms: [],
+          evaluation: [],
+          risks: [],
+        },
+      }),
+    });
+
     const { AnalystView } = await import("@/components/views/analyst-view");
     await act(async () => {
       render(<AnalystView agent={makeAgentState({ activeAgent: "analyst" })} />);

@@ -9,7 +9,14 @@ interface ScoutViewProps {
   agent: AgentState;
 }
 
-type TenderWithScore = Tender & { match_score: number };
+type TenderWithScore = Tender & {
+  match_score: number;
+  bm25_score: number;
+  category_score: number;
+  synonym_score: number;
+  location_score: number;
+  matched_keywords: string[];
+};
 
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
@@ -28,7 +35,12 @@ export function ScoutView({ agent }: ScoutViewProps) {
       // Use match_score from the API if available, default to 0
       const scored: TenderWithScore[] = data.map((t) => ({
         ...t,
-        match_score: t.match_score ?? 0,
+        match_score: (t as TenderWithScore).match_score ?? 0,
+        bm25_score: (t as TenderWithScore).bm25_score ?? 0,
+        category_score: (t as TenderWithScore).category_score ?? 0,
+        synonym_score: (t as TenderWithScore).synonym_score ?? 0,
+        location_score: (t as TenderWithScore).location_score ?? 0,
+        matched_keywords: (t as TenderWithScore).matched_keywords ?? [],
       }));
       scored.sort((a, b) => b.match_score - a.match_score);
       setTenders(scored);

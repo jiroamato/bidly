@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase";
+import { combineTenderScores } from "@/lib/matching/score-tenders";
 
 const supabase = createServerClient();
 
@@ -95,7 +96,7 @@ async function getCompanyProfile(input: Record<string, any>): Promise<string> {
 }
 
 async function matchTendersToProfile(input: Record<string, any>): Promise<string> {
-  const { profile_id, limit = 20 } = input;
+  const { profile_id } = input;
 
   // Fetch profile
   const { data: profile, error: profileError } = await supabase
@@ -108,25 +109,15 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
     return JSON.stringify({ error: profileError?.message || "Profile not found" });
   }
 
-  // Query tenders matching profile's province
-  let q = supabase
+  // Fetch ALL tenders (no regional pre-filter)
+  const { data: tenders, error: tenderError } = await supabase
     .from("tenders")
-    .select("*")
-    .contains("regions_of_delivery", [profile.province])
-    .order("closing_date", { ascending: true })
-    .limit(limit);
+    .select("*");
 
-  const { data, error } = await q;
-  if (error) return JSON.stringify({ error: error.message });
+  if (tenderError) return JSON.stringify({ error: tenderError.message });
 
-  // Score results by keyword overlap with title/description
-  const keywords = (profile.keywords || []).map((k: string) => k.toLowerCase());
-  const scored = (data || []).map((t: any) => {
-    const text = `${t.title} ${t.description}`.toLowerCase();
-    const matched = keywords.filter((k: string) => text.includes(k));
-    return { ...t, match_score: matched.length > 0 ? Math.round((matched.length / Math.max(keywords.length, 1)) * 100) : 0, matched_keywords: matched };
-  });
-  scored.sort((a: any, b: any) => b.match_score - a.match_score);
+  // Score using shared module
+  const scored = combineTenderScores(profile, tenders || []);
   return JSON.stringify(scored);
 }
 
