@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockSingle = vi.fn();
-const mockLimit = vi.fn(() => ({ data: [], error: null }));
+const mockLimit = vi.fn(() => ({ data: [] as Record<string, unknown>[], error: null }));
 const mockOrder = vi.fn(() => ({ limit: mockLimit }));
 const mockContains = vi.fn(() => ({ order: mockOrder, limit: mockLimit }));
 const mockIlike = vi.fn(() => ({ contains: mockContains, order: mockOrder, limit: mockLimit, ilike: mockIlike }));

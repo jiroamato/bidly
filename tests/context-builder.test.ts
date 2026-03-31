@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 const mockSingle = vi.fn();
 const mockEq = vi.fn(() => ({ single: mockSingle }));
 const mockSelect = vi.fn(() => ({ eq: mockEq }));
-const mockFrom = vi.fn(() => ({ select: mockSelect }));
+const mockFrom = vi.fn((_table?: string) => ({ select: mockSelect }));
 
 vi.mock("@/lib/supabase", () => ({
   createServerClient: () => ({ from: mockFrom }),
