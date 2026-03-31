@@ -52,6 +52,7 @@ function makeAgentState(overrides = {}) {
     completeAgent: vi.fn(),
     setProfile: vi.fn(),
     setSelectedTender: vi.fn(),
+    resetDemo: vi.fn(),
     ...overrides,
   };
 }
