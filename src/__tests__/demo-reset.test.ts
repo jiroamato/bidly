@@ -14,14 +14,12 @@ describe("resetDemo", () => {
     const { result } = renderHook(() => useAgent());
     act(() =>
       result.current.setProfile({
-        id: 1,
-        company_name: "Test",
-        naics_codes: [],
-        location: "",
-        province: "",
-        capabilities: "",
-        keywords: [],
-        created_at: "",
+        id: 1, company_name: "Test", naics_codes: [], location: "", province: "",
+        capabilities: "", keywords: [], keyword_synonyms: {}, embedding: null,
+        insurance_amount: "", bonding_limit: null, certifications: [],
+        years_in_business: null, past_gov_experience: "", pbn: "",
+        is_canadian: null, security_clearance: "", project_size_min: null,
+        project_size_max: null, created_at: "",
       })
     );
     expect(result.current.profile).not.toBeNull();

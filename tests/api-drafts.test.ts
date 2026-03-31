@@ -71,10 +71,10 @@ describe("POST /api/drafts", () => {
 
     expect(json).toEqual(saved);
     // Verify upsert was called with updated_at added
-    const upsertArg = mockUpsert.mock.calls[0][0];
+    const upsertArg = mockUpsert.mock.calls[0][0] as Record<string, unknown>;
     expect(upsertArg.updated_at).toBeDefined();
     expect(upsertArg.profile_id).toBe(1);
-    expect(mockUpsert.mock.calls[0][1]).toEqual({ onConflict: "profile_id,tender_id" });
+    expect(mockUpsert.mock.calls[0][1] as Record<string, unknown>).toEqual({ onConflict: "profile_id,tender_id" });
   });
 
   it("returns 400 on upsert error", async () => {
