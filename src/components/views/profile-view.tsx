@@ -436,8 +436,8 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         .trim();
       const profileData = JSON.parse(jsonStr);
       await saveProfile(profileData);
-    } catch {
-      // Extraction failed — user can still chat
+    } catch (err) {
+      console.error("Profile extraction/save failed:", err);
     }
   };
 
