@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockSingle = vi.fn();
-const mockLimit = vi.fn(() => ({ data: [], error: null }));
+const mockLimit = vi.fn(() => ({ data: [] as Record<string, unknown>[], error: null }));
 const mockOrder = vi.fn(() => ({ limit: mockLimit }));
 const mockContains = vi.fn(() => ({ order: mockOrder, limit: mockLimit }));
 const mockIlike = vi.fn(() => ({ contains: mockContains, order: mockOrder, limit: mockLimit, ilike: mockIlike }));
@@ -45,23 +45,33 @@ const { handleToolCall } = await import("@/lib/ai/tool-handlers");
 describe("matchTendersToProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("queries tenders filtered by province and keywords", async () => {
+  it("fetches all tenders and scores them", async () => {
     mockSingle.mockResolvedValue({
       data: {
         province: "Saskatchewan",
         keywords: ["janitorial", "cleaning"],
         keyword_synonyms: {},
         embedding: null,
+        naics_codes: [],
       },
       error: null,
     });
-    mockRpc.mockResolvedValue({ data: [{ id: 1, title: "Test Tender", description: "janitorial services" }], error: null });
+    mockSelect.mockReturnValueOnce({
+      eq: mockEq,
+      or: mockOr,
+      order: mockOrder,
+      limit: mockLimit,
+      ilike: mockIlike,
+      contains: mockContains,
+      single: mockSingle,
+      gte: mockGte,
+    });
 
-    const result = await handleToolCall("matchTendersToProfile", { profile_id: 1, limit: 20 });
+    const result = await handleToolCall("matchTendersToProfile", { profile_id: 1 });
     const parsed = JSON.parse(result);
 
     expect(mockFrom).toHaveBeenCalledWith("business_profiles");
-    expect(mockRpc).toHaveBeenCalledWith("tenders_by_region", { target_province: "Saskatchewan" });
+    expect(mockFrom).toHaveBeenCalledWith("tenders");
   });
 
   it("returns error when profile not found", async () => {

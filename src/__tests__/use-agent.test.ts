@@ -99,14 +99,13 @@ describe("useAgent hook", () => {
     it("stores the business profile", () => {
       const { result } = renderHook(() => useAgent());
       const mockProfile = {
-        id: 1,
-        company_name: "Test Corp",
-        naics_codes: ["238220"],
-        location: "Toronto",
-        province: "Ontario",
-        capabilities: "Plumbing",
-        keywords: ["plumbing"],
-        created_at: "2026-03-22T00:00:00Z",
+        id: 1, company_name: "Test Corp", naics_codes: ["238220"],
+        location: "Toronto", province: "Ontario", capabilities: "Plumbing",
+        keywords: ["plumbing"], keyword_synonyms: {}, embedding: null,
+        insurance_amount: "", bonding_limit: null, certifications: [],
+        years_in_business: null, past_gov_experience: "", pbn: "",
+        is_canadian: null, security_clearance: "", project_size_min: null,
+        project_size_max: null, created_at: "2026-03-22T00:00:00Z",
       };
       act(() => result.current.setProfile(mockProfile));
       expect(result.current.profile).toEqual(mockProfile);
@@ -116,11 +115,19 @@ describe("useAgent hook", () => {
       const { result } = renderHook(() => useAgent());
       const profile1 = {
         id: 1, company_name: "A", naics_codes: [], location: "", province: "",
-        capabilities: "", keywords: [], created_at: "",
+        capabilities: "", keywords: [], keyword_synonyms: {}, embedding: null,
+        insurance_amount: "", bonding_limit: null, certifications: [],
+        years_in_business: null, past_gov_experience: "", pbn: "",
+        is_canadian: null, security_clearance: "", project_size_min: null,
+        project_size_max: null, created_at: "",
       };
       const profile2 = {
         id: 2, company_name: "B", naics_codes: [], location: "", province: "",
-        capabilities: "", keywords: [], created_at: "",
+        capabilities: "", keywords: [], keyword_synonyms: {}, embedding: null,
+        insurance_amount: "", bonding_limit: null, certifications: [],
+        years_in_business: null, past_gov_experience: "", pbn: "",
+        is_canadian: null, security_clearance: "", project_size_min: null,
+        project_size_max: null, created_at: "",
       };
       act(() => result.current.setProfile(profile1));
       act(() => result.current.setProfile(profile2));

@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase";
+import { combineTenderScores } from "@/lib/matching/score-tenders";
 
 const supabase = createServerClient();
 
@@ -95,7 +96,7 @@ async function getCompanyProfile(input: Record<string, any>): Promise<string> {
 }
 
 async function matchTendersToProfile(input: Record<string, any>): Promise<string> {
-  const { profile_id, limit = 200 } = input;
+  const { profile_id } = input;
 
   // Fetch profile
   const { data: profile, error: profileError } = await supabase
@@ -108,34 +109,16 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
     return JSON.stringify({ error: profileError?.message || "Profile not found" });
   }
 
-  // Fetch region-filtered tenders via Postgres function
+  // Fetch ALL tenders (no regional pre-filter)
   const { data: tenders, error: tenderError } = await supabase
-    .rpc("tenders_by_region", { target_province: profile.province || "" });
+    .from("tenders")
+    .select("*");
 
   if (tenderError) return JSON.stringify({ error: tenderError.message });
 
-  // Fetch embedding similarities if profile has an embedding
-  let embeddingSimilarities = new Map<number, number>();
-  if (profile.embedding) {
-    const { data: similarities } = await supabase
-      .rpc("match_tenders_by_embedding", {
-        query_embedding: JSON.stringify(profile.embedding),
-        match_count: (tenders || []).length,
-      });
-
-    if (similarities) {
-      for (const row of similarities) {
-        embeddingSimilarities.set(row.tender_id, row.similarity);
-      }
-    }
-  }
-
   // Score using shared module
-  const { combineTenderScores } = await import("@/lib/matching/score-tenders");
-  const scored = combineTenderScores(profile, tenders || [], embeddingSimilarities);
-
-  // Respect limit
-  return JSON.stringify(scored.slice(0, limit));
+  const scored = combineTenderScores(profile, tenders || []);
+  return JSON.stringify(scored);
 }
 
 async function filterTenders(input: Record<string, any>): Promise<string> {

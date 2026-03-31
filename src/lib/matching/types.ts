@@ -1,29 +1,27 @@
 import type { Tender } from "@/lib/types";
 
-export interface KeywordMatchDetail {
-  keyword: string;
-  matchedVia: string; // the actual term that matched (could be a synonym)
-  idfWeight: number;
+export interface CategoryResult {
+  score: number; // 0, 50, or 100
+  profileCategories: string[];
+  tenderCategory: string;
 }
 
-export interface KeywordResult {
-  score: number; // 0-100
-  matchedKeywords: string[];
-  details: KeywordMatchDetail[];
-}
-
-export interface EmbeddingResult {
-  score: number; // 0-100 (cosine similarity * 100)
+export interface LocationResult {
+  score: number; // 0 or 100
 }
 
 export interface ScoredTender extends Tender {
   match_score: number; // 0-100 combined
-  keyword_score: number; // 0-100
-  embedding_score: number; // 0-100
+  bm25_score: number; // 0-100
+  category_score: number; // 0, 50, or 100
+  synonym_score: number; // 0-100
+  location_score: number; // 0 or 100
   matched_keywords: string[];
 }
 
 export const SCORING_WEIGHTS = {
-  keyword: 0.4,
-  embedding: 0.6,
+  bm25: 0.45,
+  category: 0.25,
+  synonym: 0.15,
+  location: 0.15,
 } as const;

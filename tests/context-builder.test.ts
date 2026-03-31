@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 const mockSingle = vi.fn();
 const mockEq = vi.fn(() => ({ single: mockSingle }));
 const mockSelect = vi.fn(() => ({ eq: mockEq }));
-const mockFrom = vi.fn(() => ({ select: mockSelect }));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockFrom: any = vi.fn((_table: string) => ({ select: mockSelect }));
 
 vi.mock("@/lib/supabase", () => ({
   createServerClient: () => ({ from: mockFrom }),
@@ -18,6 +19,8 @@ const mockProfile = {
   province: "Saskatchewan",
   capabilities: "Janitorial",
   keywords: ["cleaning"],
+  keyword_synonyms: { cleaning: ["janitorial", "custodial"] },
+  embedding: null,
   insurance_amount: "$2M",
   bonding_limit: 500000,
   certifications: ["WSIB"],
@@ -37,6 +40,14 @@ const mockTender = {
   id: 10,
   title: "Janitorial Services",
   description: "Cleaning for federal buildings",
+  solicitation_number: "SOL-001",
+  publication_date: "2026-01-01",
+  notice_type: "RFP",
+  procurement_method: "Competitive",
+  selection_criteria: "",
+  gsin_codes: [],
+  unspsc_codes: [],
+  regions_of_opportunity: ["Saskatchewan"],
   regions_of_delivery: ["Saskatchewan"],
   trade_agreements: ["CFTA"],
   reference_number: "REF-001",
@@ -44,12 +55,18 @@ const mockTender = {
   closing_date: "2026-04-15",
   procurement_category: "SRV",
   status: "Open",
+  notice_url: "",
+  attachment_urls: [],
 };
 
 const mockSelection = {
+  id: 1,
+  profile_id: 1,
+  tender_id: 10,
   match_score: 85,
   matched_keywords: ["janitorial"],
   match_reasoning: "Strong fit",
+  created_at: "2026-01-01T00:00:00Z",
 };
 
 const mockAnalysis = {

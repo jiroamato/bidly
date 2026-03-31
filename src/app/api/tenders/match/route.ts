@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
   const profileId = searchParams.get("profileId");
 
   if (!profileId) {
-    return NextResponse.json({ error: "profileId is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "profileId is required" },
+      { status: 400 }
+    );
   }
 
   // 1. Fetch profile
@@ -26,35 +29,22 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 2. Fetch region-filtered tenders via Postgres function
+  // 2. Fetch ALL tenders (no regional pre-filter)
   const { data: tenders, error: tenderError } = await supabase
-    .rpc("tenders_by_region", { target_province: profile.province || "" });
+    .from("tenders")
+    .select("*");
 
   if (tenderError) {
-    return NextResponse.json({ error: tenderError.message }, { status: 500 });
+    return NextResponse.json(
+      { error: tenderError.message },
+      { status: 500 }
+    );
   }
 
-  // 3. Fetch embedding similarities if profile has an embedding
-  let embeddingSimilarities = new Map<number, number>();
-  if (profile.embedding) {
-    const { data: similarities } = await supabase
-      .rpc("match_tenders_by_embedding", {
-        query_embedding: JSON.stringify(profile.embedding),
-        match_count: (tenders as Tender[]).length,
-      });
-
-    if (similarities) {
-      for (const row of similarities) {
-        embeddingSimilarities.set(row.tender_id, row.similarity);
-      }
-    }
-  }
-
-  // 4. Score tenders
+  // 3. Score tenders using multi-signal BM25 system
   const scored = combineTenderScores(
     profile as BusinessProfile,
-    (tenders || []) as Tender[],
-    embeddingSimilarities
+    (tenders || []) as Tender[]
   );
 
   return NextResponse.json(scored);

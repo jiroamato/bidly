@@ -12,8 +12,10 @@ interface ScoutViewProps {
 
 type TenderWithScore = Tender & {
   match_score: number;
-  keyword_score: number;
-  embedding_score: number;
+  bm25_score: number;
+  category_score: number;
+  synonym_score: number;
+  location_score: number;
   matched_keywords: string[];
 };
 
@@ -33,8 +35,19 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
     try {
       const res = await fetch(`/api/tenders/match?profileId=${profileId}`);
       if (!res.ok) throw new Error("Failed to load tenders");
-      const data = await res.json();
-      setTenders(data as TenderWithScore[]);
+      const data: Tender[] = await res.json();
+      // Use match_score from the API if available, default to 0
+      const scored: TenderWithScore[] = data.map((t) => ({
+        ...t,
+        match_score: (t as TenderWithScore).match_score ?? 0,
+        bm25_score: (t as TenderWithScore).bm25_score ?? 0,
+        category_score: (t as TenderWithScore).category_score ?? 0,
+        synonym_score: (t as TenderWithScore).synonym_score ?? 0,
+        location_score: (t as TenderWithScore).location_score ?? 0,
+        matched_keywords: (t as TenderWithScore).matched_keywords ?? [],
+      }));
+      scored.sort((a, b) => b.match_score - a.match_score);
+      setTenders(scored);
     } catch (err) {
       console.error("Failed to load tenders:", err);
     } finally {
