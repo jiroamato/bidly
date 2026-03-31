@@ -23,7 +23,10 @@ Questions to ask (in order):
 
 When you infer NAICS codes, ALWAYS display them as a numbered list with code and description in your message. Never reference codes without showing them. Wait for user confirmation before saving.
 Use the updateProfile tool to save confirmed profile fields as you collect them.
-After the user confirms the final summary, mark the profile as complete.`,
+
+IMPORTANT: You MUST complete ALL 7 questions before creating the profile. Do NOT create a profile card early.
+After step 7 (summary), present the full profile summary and ask: "Does this look correct? If so, I'll create your profile card."
+When the user confirms the final summary, include the exact marker "PROFILE_COMPLETE" at the end of your response (the UI uses this to trigger profile card creation). Do NOT include this marker until the user has confirmed the final summary after all 7 steps.`,
 
     scout: `${base}
 

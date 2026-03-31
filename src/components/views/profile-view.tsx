@@ -406,32 +406,28 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
           { role: "assistant", content: "", timestamp: Date.now() },
         ]);
 
+        let streamedText = "";
         if (reader) {
           await consumeSSEStream(reader, (accumulated) => {
+            streamedText = accumulated;
             setMessages((prev) => {
               const msgs = [...prev];
               msgs[msgs.length - 1] = {
                 ...msgs[msgs.length - 1],
-                content: accumulated,
+                content: accumulated.replace("PROFILE_COMPLETE", "").trim(),
               };
               return msgs;
             });
           });
         }
 
-        // After 4+ user messages and a confirmation word, extract profile
-        const count = updated.filter((m) => m.role === "user").length;
-        if (count >= 4) {
-          const lower = text.toLowerCase();
-          if (
-            lower.includes("yes") ||
-            lower.includes("confirm") ||
-            lower.includes("looks good") ||
-            lower.includes("correct") ||
-            lower.includes("great")
-          ) {
-            await extractAndSaveProfile(updated);
-          }
+        // Check if the assistant's streamed response signals the profile is complete.
+        if (streamedText.includes("PROFILE_COMPLETE")) {
+          const allMessages = [
+            ...updated,
+            { role: "assistant" as const, content: streamedText.replace("PROFILE_COMPLETE", "").trim(), timestamp: Date.now() },
+          ];
+          await extractAndSaveProfile(allMessages);
         }
       } catch {
         setIsTyping(false);

@@ -186,8 +186,22 @@ describe("ProfileView — API wiring", () => {
       render(<ProfileView agent={agent} />);
     });
 
-    // Answer all 5 questions
-    const answers = ["Acme Corp", "Ontario", "Plumbing, pipes", "500K-2M, WSIB", "yes"];
+    // Answer questions; the last AI response includes PROFILE_COMPLETE marker
+    const answers = ["Acme Corp", "Ontario", "Plumbing, pipes", "500K-2M, WSIB"];
+    // Override: after last answer, AI responds with PROFILE_COMPLETE marker
+    let answerCount = 0;
+    const originalImpl = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (url === "/api/ai" && !lastMsg?.content?.includes("Extract")) {
+        answerCount++;
+        if (answerCount >= answers.length) {
+          return Promise.resolve(makeSSEResponse("Profile looks complete! PROFILE_COMPLETE"));
+        }
+      }
+      return originalImpl(url, opts);
+    });
     for (const answer of answers) {
       const input = screen.getByRole("textbox");
       await act(async () => {
@@ -234,7 +248,21 @@ describe("ProfileView — API wiring", () => {
       render(<ProfileView agent={agent} />);
     });
 
-    const answers = ["Acme Corp", "Ontario", "Plumbing", "500K, WSIB", "yes"];
+    const answers = ["Acme Corp", "Ontario", "Plumbing", "500K, WSIB"];
+    // Override: after last answer, AI responds with PROFILE_COMPLETE marker
+    let answerCount2 = 0;
+    const originalImpl2 = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (url === "/api/ai" && !lastMsg?.content?.includes("Extract")) {
+        answerCount2++;
+        if (answerCount2 >= answers.length) {
+          return Promise.resolve(makeSSEResponse("Profile complete! PROFILE_COMPLETE"));
+        }
+      }
+      return originalImpl2(url, opts);
+    });
     for (const answer of answers) {
       const input = screen.getByRole("textbox");
       await act(async () => {
