@@ -59,29 +59,38 @@ function makeProfile(overrides: Partial<BusinessProfile> = {}): BusinessProfile 
 describe("combineTenderScores", () => {
   it("combines keyword and embedding scores with correct weights", () => {
     const profile = makeProfile();
-    const tenders = [makeTender()];
-    const embeddingSimilarities = new Map([[1, 0.75]]);
+    const tenders = [
+      makeTender(),
+      makeTender({ id: 2, title: "Furniture delivery", description: "office furniture" }),
+      makeTender({ id: 3, title: "Plumbing services", description: "pipe repair and maintenance" }),
+    ];
+    const embeddingSimilarities = new Map([[1, 0.75], [2, 0.1], [3, 0.05]]);
 
     const result = combineTenderScores(profile, tenders, embeddingSimilarities);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].keyword_score).toBeGreaterThan(0);
-    expect(result[0].embedding_score).toBe(75);
-    expect(result[0].match_score).toBe(
-      Math.round(result[0].keyword_score * 0.4 + 75 * 0.6)
+    const cyber = result.find((r) => r.id === 1)!;
+    expect(cyber.keyword_score).toBeGreaterThan(0);
+    expect(cyber.embedding_score).toBe(75);
+    expect(cyber.match_score).toBe(
+      Math.round(cyber.keyword_score * 0.4 + 75 * 0.6)
     );
-    expect(result[0].matched_keywords).toContain("cybersecurity");
+    expect(cyber.matched_keywords).toContain("cybersecurity");
   });
 
   it("falls back to keyword-only when no embedding similarities", () => {
     const profile = makeProfile();
-    const tenders = [makeTender()];
+    const tenders = [
+      makeTender(),
+      makeTender({ id: 2, title: "Furniture delivery", description: "office furniture" }),
+      makeTender({ id: 3, title: "Plumbing services", description: "pipe repair and maintenance" }),
+    ];
     const embeddingSimilarities = new Map<number, number>();
 
     const result = combineTenderScores(profile, tenders, embeddingSimilarities);
 
-    expect(result[0].embedding_score).toBe(0);
-    expect(result[0].match_score).toBe(Math.round(result[0].keyword_score * 0.4));
+    const cyber = result.find((r) => r.id === 1)!;
+    expect(cyber.embedding_score).toBe(0);
+    expect(cyber.match_score).toBe(Math.round(cyber.keyword_score * 0.4));
   });
 
   it("sorts by match_score descending", () => {
