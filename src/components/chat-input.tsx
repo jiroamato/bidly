@@ -19,6 +19,7 @@ export function ChatInput({ agentId, onSend, disabled, externalValue }: ChatInpu
   useEffect(() => {
     if (externalValue !== undefined) {
       setValue(externalValue);
+      textareaRef.current?.focus();
     }
   }, [externalValue]);
 
