@@ -25,7 +25,7 @@ export function mapTenderRow(r: Record<string, string>, fallbackIndex: number) {
     publication_date: r["publicationDate-datePublication"] || null,
     closing_date: r["tenderClosingDate-appelOffresDateCloture"] || null,
     status: r["tenderStatus-appelOffresStatut-eng"] || "",
-    procurement_category: r["procurementCategory-categorieApprovisionnement"] || "",
+    procurement_category: (r["procurementCategory-categorieApprovisionnement"] || "").replace(/^\*/, "").trim(),
     notice_type: r["noticeType-avisType-eng"] || "",
     procurement_method: r["procurementMethod-methodeApprovisionnement-eng"] || "",
     selection_criteria: r["selectionCriteria-criteresSelection-eng"] || "",
