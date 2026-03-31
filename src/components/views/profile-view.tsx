@@ -430,11 +430,13 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         fullText = await consumeSSEStream(reader, () => {});
       }
 
-      const jsonStr = fullText
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
-      const profileData = JSON.parse(jsonStr);
+      // Extract JSON from anywhere in the response — AI may wrap it in markdown or add text
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("Profile extraction: no JSON found in response:", fullText.slice(0, 200));
+        return;
+      }
+      const profileData = JSON.parse(jsonMatch[0]);
       await saveProfile(profileData);
     } catch (err) {
       console.error("Profile extraction/save failed:", err);
