@@ -31,6 +31,21 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  // Embed capabilities text for semantic matching (non-blocking — don't fail the save)
+  if (data.capabilities && process.env.VOYAGE_API_KEY) {
+    try {
+      const { embedText } = await import("@/lib/matching/embed");
+      const embedding = await embedText(data.capabilities);
+      await supabase
+        .from("business_profiles")
+        .update({ embedding: JSON.stringify(embedding) })
+        .eq("id", data.id);
+    } catch (err) {
+      console.error("Failed to embed profile capabilities:", err);
+    }
+  }
+
   return NextResponse.json(data);
 }
 
@@ -63,5 +78,20 @@ export async function PUT(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  // Re-embed if capabilities changed
+  if (updates.capabilities && process.env.VOYAGE_API_KEY) {
+    try {
+      const { embedText } = await import("@/lib/matching/embed");
+      const embedding = await embedText(data.capabilities);
+      await supabase
+        .from("business_profiles")
+        .update({ embedding: JSON.stringify(embedding) })
+        .eq("id", data.id);
+    } catch (err) {
+      console.error("Failed to re-embed profile capabilities:", err);
+    }
+  }
+
   return NextResponse.json(data);
 }
