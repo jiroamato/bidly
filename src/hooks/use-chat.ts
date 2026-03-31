@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { AgentId, ChatMessage } from "@/lib/types";
+import { consumeSSEStream } from "@/lib/sse";
 
 export function useChat(agentId: AgentId, profileId?: number, tenderId?: number) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -40,14 +41,29 @@ export function useChat(agentId: AgentId, profileId?: number, tenderId?: number)
           throw new Error(`AI request failed: ${response.status}`);
         }
 
-        const data = await response.json();
+        // Stream SSE response
+        const reader = response.body?.getReader();
+
+        // Add an empty assistant message to fill incrementally
         const assistantMessage: ChatMessage = {
           role: "assistant",
-          content: data.content,
+          content: "",
           timestamp: Date.now(),
         };
-
         setMessages((prev) => [...prev, assistantMessage]);
+
+        if (reader) {
+          await consumeSSEStream(reader, (accumulated) => {
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = {
+                ...updated[updated.length - 1],
+                content: accumulated,
+              };
+              return updated;
+            });
+          });
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {

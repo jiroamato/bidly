@@ -7,6 +7,7 @@ import { AgentState } from "@/hooks/use-agent";
 
 interface ScoutViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
 
 type TenderWithScore = Tender & {
@@ -20,16 +21,19 @@ type TenderWithScore = Tender & {
 
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
-export function ScoutView({ agent }: ScoutViewProps) {
+export function ScoutView({ agent, externalValue }: ScoutViewProps) {
   const [activeFilter, setActiveFilter] = useState("All Matches");
   const [tenders, setTenders] = useState<TenderWithScore[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch tenders from API — scores come from the AI via match_score field
+  const profileId = agent.profile?.id;
+
+  // Fetch scored tenders from match endpoint
   const loadTenders = useCallback(async () => {
+    if (!profileId) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/tenders");
+      const res = await fetch(`/api/tenders/match?profileId=${profileId}`);
       if (!res.ok) throw new Error("Failed to load tenders");
       const data: Tender[] = await res.json();
       // Use match_score from the API if available, default to 0
@@ -49,7 +53,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profileId]);
 
   useEffect(() => {
     loadTenders();
@@ -272,6 +276,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
         agentId="scout"
         profileId={agent.profile?.id}
         tenderId={agent.selectedTender?.id}
+        externalValue={externalValue}
       />
     </div>
   );

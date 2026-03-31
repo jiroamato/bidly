@@ -15,8 +15,10 @@ const mockEq = vi.fn(() => ({
   limit: mockLimit,
   gte: mockGte,
 }));
+const mockOr = vi.fn(() => ({ order: mockOrder, limit: mockLimit }));
 const mockSelect = vi.fn(() => ({
   eq: mockEq,
+  or: mockOr,
   order: mockOrder,
   limit: mockLimit,
   ilike: mockIlike,
@@ -32,8 +34,10 @@ const mockFrom = vi.fn(() => ({
   update: mockUpdate,
 }));
 
+const mockRpc = vi.fn(() => ({ data: [], error: null }));
+
 vi.mock("@/lib/supabase", () => ({
-  createServerClient: () => ({ from: mockFrom }),
+  createServerClient: () => ({ from: mockFrom, rpc: mockRpc }),
 }));
 
 const { handleToolCall } = await import("@/lib/ai/tool-handlers");
@@ -41,17 +45,29 @@ const { handleToolCall } = await import("@/lib/ai/tool-handlers");
 describe("matchTendersToProfile", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("queries tenders filtered by province and keywords", async () => {
+  it("fetches all tenders and scores them", async () => {
     mockSingle.mockResolvedValue({
       data: {
         province: "Saskatchewan",
         keywords: ["janitorial", "cleaning"],
+        keyword_synonyms: {},
+        embedding: null,
+        naics_codes: [],
       },
       error: null,
     });
-    mockLimit.mockReturnValue({ data: [{ id: 1, title: "Test Tender" }], error: null });
+    mockSelect.mockReturnValueOnce({
+      eq: mockEq,
+      or: mockOr,
+      order: mockOrder,
+      limit: mockLimit,
+      ilike: mockIlike,
+      contains: mockContains,
+      single: mockSingle,
+      gte: mockGte,
+    });
 
-    const result = await handleToolCall("matchTendersToProfile", { profile_id: 1, limit: 20 });
+    const result = await handleToolCall("matchTendersToProfile", { profile_id: 1 });
     const parsed = JSON.parse(result);
 
     expect(mockFrom).toHaveBeenCalledWith("business_profiles");

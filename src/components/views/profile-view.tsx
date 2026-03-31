@@ -4,9 +4,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
+import { consumeSSEStream } from "@/lib/sse";
 
 interface ProfileViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
 
 const INITIAL_MESSAGE =
@@ -266,7 +268,7 @@ function ProfileCard({
 
 /* ---------- COMPONENT ---------- */
 
-export function ProfileView({ agent }: ProfileViewProps) {
+export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: INITIAL_MESSAGE, timestamp: Date.now() },
   ]);
@@ -349,13 +351,28 @@ export function ProfileView({ agent }: ProfileViewProps) {
         });
 
         if (!res.ok) throw new Error("AI request failed");
-        const data = await res.json();
-        setIsTyping(false);
 
+        // Stream the response
+        const reader = res.body?.getReader();
+
+        setIsTyping(false);
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: data.content, timestamp: Date.now() },
+          { role: "assistant", content: "", timestamp: Date.now() },
         ]);
+
+        if (reader) {
+          await consumeSSEStream(reader, (accumulated) => {
+            setMessages((prev) => {
+              const msgs = [...prev];
+              msgs[msgs.length - 1] = {
+                ...msgs[msgs.length - 1],
+                content: accumulated,
+              };
+              return msgs;
+            });
+          });
+        }
 
         // After 4+ user messages and a confirmation word, extract profile
         const count = updated.filter((m) => m.role === "user").length;
@@ -398,22 +415,31 @@ export function ProfileView({ agent }: ProfileViewProps) {
             {
               role: "user",
               content:
-                'Extract the company profile from our conversation as JSON: {"company_name":"","naics_codes":[],"location":"","province":"","capabilities":"","keywords":[]}. Return ONLY valid JSON.',
+                'Extract the company profile from our conversation as JSON: {"company_name":"","naics_codes":[],"location":"","province":"","capabilities":"","keywords":[],"keyword_synonyms":{}}. For keyword_synonyms, map each keyword to an array of 2-4 alternative phrasings or related terms (e.g. "cybersecurity": ["cyber security", "IT security", "infosec"]). Return ONLY valid JSON.',
               timestamp: Date.now(),
             },
           ],
           profileId: agent.profile?.id,
         }),
       });
-      const data = await res.json();
-      const jsonStr = data.content
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
-      const profileData = JSON.parse(jsonStr);
+
+      // Read SSE stream to collect full text
+      const reader = res.body?.getReader();
+      let fullText = "";
+      if (reader) {
+        fullText = await consumeSSEStream(reader, () => {});
+      }
+
+      // Extract JSON from anywhere in the response — AI may wrap it in markdown or add text
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error("Profile extraction: no JSON found in response:", fullText.slice(0, 200));
+        return;
+      }
+      const profileData = JSON.parse(jsonMatch[0]);
       await saveProfile(profileData);
-    } catch {
-      // Extraction failed — user can still chat
+    } catch (err) {
+      console.error("Profile extraction/save failed:", err);
     }
   };
 
@@ -699,6 +725,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
               agentId="profile"
               onSend={handleSend}
               disabled={isTyping}
+              externalValue={externalValue}
             />
           </div>
         </div>

@@ -94,13 +94,42 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Extract text from response
+    // Extract text from the final (already-received) response
     const textContent = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("\n");
 
-    return NextResponse.json({ content: textContent });
+    // NOTE: This is a simulated typewriter stream for demo purposes.
+    // The full Anthropic response has already been collected above.
+    // For real streaming, use the Anthropic SDK's `stream: true` option.
+    const encoder = new TextEncoder();
+    const CHUNK_SIZE = 4;
+    const readable = new ReadableStream({
+      start(controller) {
+        let i = 0;
+        const interval = setInterval(() => {
+          if (i >= textContent.length) {
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+            clearInterval(interval);
+            return;
+          }
+          const chunk = textContent.slice(i, i + CHUNK_SIZE);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+          );
+          i += CHUNK_SIZE;
+        }, 5);
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    });
   } catch (error: any) {
     console.error("AI route error:", error);
     return NextResponse.json(

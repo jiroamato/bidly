@@ -72,7 +72,7 @@ describe("POST /api/ai", () => {
     expect(mockBuildAgentContext).toHaveBeenCalledWith("profile", 1, undefined);
   });
 
-  it("returns 200 with content", async () => {
+  it("returns 200 with SSE-streamed content", async () => {
     const res = await POST(
       makeRequest({
         agentId: "scout",
@@ -81,8 +81,29 @@ describe("POST /api/ai", () => {
       }) as any
     );
 
-    const json = await res.json();
     expect(res.status).toBe(200);
-    expect(json.content).toBe("Hello from Claude");
+    expect(res.headers.get("Content-Type")).toBe("text/event-stream");
+
+    // Collect SSE chunks
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let fullText = "";
+    let done = false;
+    while (!done) {
+      const result = await reader.read();
+      if (result.done) break;
+      const chunk = decoder.decode(result.value, { stream: true });
+      for (const line of chunk.split("\n")) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          if (data === "[DONE]") { done = true; break; }
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) fullText += parsed.text;
+          } catch { /* skip */ }
+        }
+      }
+    }
+    expect(fullText).toBe("Hello from Claude");
   });
 });

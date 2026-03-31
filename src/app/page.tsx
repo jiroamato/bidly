@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useAgent } from "@/hooks/use-agent";
+import { useDemoScript } from "@/hooks/use-demo-script";
 import { Sidebar } from "@/components/sidebar";
 import { MainHeader } from "@/components/main-header";
 import { ProfileView } from "@/components/views/profile-view";
@@ -13,15 +14,26 @@ import { WriterView } from "@/components/views/writer-view";
 export default function Home() {
   const agent = useAgent();
 
+  const [demoInputValue, setDemoInputValue] = useState<string | undefined>(undefined);
+  const demoScript = useDemoScript(agent.activeAgent, (text: string) => {
+    setDemoInputValue(text);
+  });
+
+  // Clear external value when switching agents
+  useEffect(() => {
+    setDemoInputValue(undefined);
+  }, [agent.activeAgent]);
+
   const handleDemoReset = useCallback(async () => {
     try {
-      const res = await fetch("/api/profile", { method: "DELETE" });
-      if (!res.ok) return;
+      await fetch("/api/profile", { method: "DELETE" });
     } catch {
-      return;
+      // Server delete failed — still reset client state
     }
     agent.resetDemo();
-  }, [agent.resetDemo]);
+    demoScript.resetScripts();
+    setDemoInputValue(undefined);
+  }, [agent.resetDemo, demoScript.resetScripts]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -29,17 +41,21 @@ export default function Home() {
         e.preventDefault();
         handleDemoReset();
       }
+      if (e.ctrlKey && e.shiftKey && e.key === "J") {
+        e.preventDefault();
+        demoScript.advanceScript();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleDemoReset]);
+  }, [handleDemoReset, demoScript.advanceScript]);
 
   const views = {
-    profile: <ProfileView agent={agent} />,
-    scout: <ScoutView agent={agent} />,
-    analyst: <AnalystView agent={agent} />,
-    compliance: <ComplianceView agent={agent} />,
-    writer: <WriterView agent={agent} />,
+    profile: <ProfileView agent={agent} externalValue={demoInputValue} />,
+    scout: <ScoutView agent={agent} externalValue={demoInputValue} />,
+    analyst: <AnalystView agent={agent} externalValue={demoInputValue} />,
+    compliance: <ComplianceView agent={agent} externalValue={demoInputValue} />,
+    writer: <WriterView agent={agent} externalValue={demoInputValue} />,
   };
 
   return (

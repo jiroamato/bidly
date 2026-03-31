@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AgentId } from "@/lib/types";
 import { getAgent } from "@/lib/agents";
 
@@ -8,11 +8,28 @@ interface ChatInputProps {
   agentId: AgentId;
   onSend: (message: string) => void;
   disabled?: boolean;
+  externalValue?: string;
 }
 
-export function ChatInput({ agentId, onSend, disabled }: ChatInputProps) {
+export function ChatInput({ agentId, onSend, disabled, externalValue }: ChatInputProps) {
   const [value, setValue] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const agent = getAgent(agentId);
+
+  useEffect(() => {
+    if (externalValue !== undefined) {
+      setValue(externalValue);
+      textareaRef.current?.focus();
+    }
+  }, [externalValue]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [value]);
 
   const handleSubmit = () => {
     if (!value.trim() || disabled) return;
@@ -46,14 +63,20 @@ export function ChatInput({ agentId, onSend, disabled }: ChatInputProps) {
         >
           {agent.name}
         </div>
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
           placeholder={agent.chatPlaceholder}
           disabled={disabled}
-          className="flex-1 border-none outline-none text-sm px-4 py-3.5"
+          rows={1}
+          className="flex-1 border-none outline-none text-sm px-4 py-3.5 resize-none"
           style={{
             fontFamily: "var(--font-sans)",
             color: "var(--text-primary)",

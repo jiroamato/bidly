@@ -6,6 +6,7 @@ import { AgentState } from "@/hooks/use-agent";
 
 interface WriterViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
 
 type SectionId = "exec_summary" | "technical" | "team" | "project_mgmt" | "safety" | "pricing" | "forms" | "preview";
@@ -107,7 +108,7 @@ function BidPreview({ draftSections }: { draftSections: Record<string, string> }
   );
 }
 
-export function WriterView({ agent }: WriterViewProps) {
+export function WriterView({ agent, externalValue }: WriterViewProps) {
   const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
   const [draftSections, setDraftSections] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -351,7 +352,7 @@ export function WriterView({ agent }: WriterViewProps) {
 
             {/* Chat Panel */}
             <div className="flex-shrink-0">
-              <ChatPanel agentId="writer" selectedTender={agent.selectedTender} profile={agent.profile} />
+              <ChatPanel agentId="writer" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} />
             </div>
           </>
         )}

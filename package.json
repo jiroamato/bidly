@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "embed-tenders": "npx tsx scripts/embed-tenders.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -25,7 +26,8 @@
     "react-dom": "19.2.4",
     "shadcn": "^4.1.0",
     "tailwind-merge": "^3.5.0",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "voyageai": "^0.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

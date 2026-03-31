@@ -20,6 +20,25 @@ vi.mock("@/hooks/use-chat", () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+/** Build a fake SSE Response from a plain text string */
+function makeSSEResponse(text: string) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  for (let i = 0; i < text.length; i += 4) {
+    chunks.push(`data: ${JSON.stringify({ text: text.slice(i, i + 4) })}\n\n`);
+  }
+  chunks.push("data: [DONE]\n\n");
+  const body = new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+      }
+      controller.close();
+    },
+  });
+  return { ok: true, body, headers: new Headers({ "Content-Type": "text/event-stream" }) };
+}
+
 function makeAgentState(overrides = {}) {
   return {
     activeAgent: "scout" as const,
@@ -82,7 +101,7 @@ describe("ScoutView — API wiring", () => {
       render(<ScoutView agent={makeAgentState()} />);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/tenders");
+    expect(mockFetch).toHaveBeenCalledWith("/api/tenders/match?profileId=1");
   });
 
   it("shows loading state before tenders arrive", async () => {
@@ -138,7 +157,7 @@ describe("ProfileView — API wiring", () => {
 
   it("POSTs to /api/profile when profile is completed", async () => {
     const savedProfile = { id: 5, company_name: "Acme", province: "Ontario" };
-    // Mock all fetch calls: /api/ai returns AI responses, /api/profile returns saved profile
+    // Mock: /api/ai returns SSE responses, /api/profile returns saved profile
     mockFetch.mockImplementation((url: string, opts?: any) => {
       if (url === "/api/profile") {
         return Promise.resolve({
@@ -146,21 +165,14 @@ describe("ProfileView — API wiring", () => {
           json: () => Promise.resolve(savedProfile),
         });
       }
-      // /api/ai — return a chat response, and for extraction return valid JSON
+      // /api/ai — return SSE chat responses; for extraction return valid JSON
       const body = opts?.body ? JSON.parse(opts.body) : {};
       const lastMsg = body.messages?.[body.messages.length - 1];
       if (lastMsg?.content?.includes("Extract the company profile")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            content: JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] }),
-          }),
-        });
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
       }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ content: "Got it. Next question?" }),
-      });
+      return Promise.resolve(makeSSEResponse("Got it. Next question?"));
     });
 
     const agent = makeAgentState({
@@ -182,7 +194,6 @@ describe("ProfileView — API wiring", () => {
         fireEvent.change(input, { target: { value: answer } });
         fireEvent.keyDown(input, { key: "Enter" });
       });
-      // Advance timers for setTimeout delays
       await act(async () => {
         vi.advanceTimersByTime(700);
       });
@@ -197,29 +208,19 @@ describe("ProfileView — API wiring", () => {
   });
 
   it("falls back to local profile when API fails", async () => {
-    let callCount = 0;
-    // First 4 AI calls succeed (chat messages), 5th (extractAndSaveProfile) also succeeds
-    // but /api/profile POST fails
+    // /api/ai returns SSE responses, /api/profile POST fails
     mockFetch.mockImplementation((url: string, opts?: any) => {
       if (url === "/api/profile") {
         return Promise.reject(new Error("Network error"));
       }
-      // /api/ai calls
-      callCount++;
+      // /api/ai calls — return SSE responses
       const body = opts?.body ? JSON.parse(opts.body) : {};
       const lastMsg = body.messages?.[body.messages.length - 1];
       if (lastMsg?.content?.includes("Extract the company profile")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            content: JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing", keywords: ["plumbing"] }),
-          }),
-        });
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
       }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ content: "Got it. Next question?" }),
-      });
+      return Promise.resolve(makeSSEResponse("Got it. Next question?"));
     });
 
     const agent = makeAgentState({

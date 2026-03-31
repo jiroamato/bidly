@@ -6,6 +6,7 @@ import { AgentState } from "@/hooks/use-agent";
 
 interface AnalystViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
 
 interface TenderAnalysis {
@@ -16,7 +17,7 @@ interface TenderAnalysis {
   risks: { level: "high" | "medium" | "low"; text: string }[];
 }
 
-export function AnalystView({ agent }: AnalystViewProps) {
+export function AnalystView({ agent, externalValue }: AnalystViewProps) {
   const tender = agent.selectedTender;
   const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -172,7 +173,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
             </button>
           </div>
         </div>
-        <ChatPanel agentId="analyst" selectedTender={agent.selectedTender} profile={agent.profile} />
+        <ChatPanel agentId="analyst" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} />
       </div>
     );
   }
@@ -361,7 +362,7 @@ export function AnalystView({ agent }: AnalystViewProps) {
       </div>
       </div>
 
-      <ChatPanel agentId="analyst" selectedTender={agent.selectedTender} profile={agent.profile} />
+      <ChatPanel agentId="analyst" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} />
     </div>
   );
 }
