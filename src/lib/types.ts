@@ -6,6 +6,8 @@ export interface BusinessProfile {
   province: string;
   capabilities: string;
   keywords: string[];
+  keyword_synonyms: Record<string, string[]>;
+  embedding: number[] | null;
   insurance_amount: string;
   bonding_limit: number | null;
   certifications: string[];
