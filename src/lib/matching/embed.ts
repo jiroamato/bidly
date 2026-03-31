@@ -1,15 +1,26 @@
-import { VoyageAIClient } from "voyageai";
+const VOYAGE_API_URL = "https://api.voyageai.com/v1/embeddings";
 
-const voyage = new VoyageAIClient({
-  apiKey: process.env.VOYAGE_API_KEY,
-});
+async function callVoyageAPI(input: string[]): Promise<{ embedding: number[] }[]> {
+  const res = await fetch(VOYAGE_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
+    },
+    body: JSON.stringify({ input, model: "voyage-3" }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Voyage API error: ${res.status} ${await res.text()}`);
+  }
+
+  const json = await res.json();
+  return json.data;
+}
 
 export async function embedText(text: string): Promise<number[]> {
-  const result = await voyage.embed({
-    input: [text],
-    model: "voyage-3",
-  });
-  return result.data![0].embedding;
+  const data = await callVoyageAPI([text]);
+  return data[0].embedding;
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
@@ -20,11 +31,8 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
 
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
     const batch = texts.slice(i, i + BATCH_SIZE);
-    const result = await voyage.embed({
-      input: batch,
-      model: "voyage-3",
-    });
-    for (const item of result.data!) {
+    const data = await callVoyageAPI(batch);
+    for (const item of data) {
       allEmbeddings.push(item.embedding);
     }
   }
