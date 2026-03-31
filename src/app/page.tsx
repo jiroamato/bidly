@@ -14,9 +14,14 @@ export default function Home() {
   const agent = useAgent();
 
   const handleDemoReset = useCallback(async () => {
-    await fetch("/api/profile", { method: "DELETE" });
+    try {
+      const res = await fetch("/api/profile", { method: "DELETE" });
+      if (!res.ok) return;
+    } catch {
+      return;
+    }
     agent.resetDemo();
-  }, [agent]);
+  }, [agent.resetDemo]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
