@@ -444,25 +444,26 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   );
 
   const finalizeProfile = useCallback(async () => {
-    try {
-      // Profile data was saved to Supabase during the conversation via
-      // updateProfile tool calls. Just fetch the latest version.
-      const res = await fetch("/api/profile");
-      if (res.ok) {
-        const profile = await res.json();
-        if (profile?.id) {
-          agent.setProfile(profile);
-          setIsComplete(true);
-          setEditMode(false);
-          agent.completeAgent("profile");
-          setTimeout(() => setShowProfile(true), 400);
-          return;
+    // If user already has a profile (editing flow), fetch the updated version
+    if (agent.profile?.id) {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const profile = await res.json();
+          if (profile?.id && profile.company_name) {
+            agent.setProfile(profile);
+            setIsComplete(true);
+            setEditMode(false);
+            agent.completeAgent("profile");
+            setTimeout(() => setShowProfile(true), 400);
+            return;
+          }
         }
+      } catch (err) {
+        console.error("Profile fetch failed, falling back to extraction:", err);
       }
-    } catch (err) {
-      console.error("Profile fetch failed, falling back to extraction:", err);
     }
-    // Fallback: extract from conversation if fetch fails
+    // New user or fetch failed: extract profile from conversation and create it
     await extractAndSaveProfile(messagesRef.current);
   }, [agent]);
 

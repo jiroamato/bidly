@@ -155,15 +155,22 @@ describe("ProfileView — API wiring", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("fetches saved profile from /api/profile when profile is completed", async () => {
-    const savedProfile = { id: 5, company_name: "Acme", province: "Ontario" };
-    // Mock: /api/ai returns SSE responses, GET /api/profile returns saved profile
+  it("extracts and POSTs profile for new users when completed", async () => {
+    const savedProfile = { id: 5, company_name: "Acme Corp", province: "Ontario" };
+    // New user: profile is null, so extraction via Claude is used
     mockFetch.mockImplementation((url: string, opts?: any) => {
-      if (url === "/api/profile" && (!opts || !opts.method || opts.method === "GET")) {
+      if (url === "/api/profile" && opts?.method === "POST") {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(savedProfile),
         });
+      }
+      // /api/ai calls — extraction returns JSON, chat returns SSE
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (lastMsg?.content?.includes("Extract the company profile")) {
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
       }
       return Promise.resolve(makeSSEResponse("Got it. Next question?"));
     });
@@ -179,16 +186,21 @@ describe("ProfileView — API wiring", () => {
       render(<ProfileView agent={agent} />);
     });
 
-    // Answer questions; the last AI response includes PROFILE_COMPLETE marker
     const answers = ["Acme Corp", "Ontario", "Plumbing, pipes", "500K-2M, WSIB"];
     let answerCount = 0;
     const originalImpl = mockFetch.getMockImplementation()!;
     mockFetch.mockImplementation((url: string, opts?: any) => {
-      if (url === "/api/profile" && (!opts || !opts.method || opts.method === "GET")) {
+      if (url === "/api/profile" && opts?.method === "POST") {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(savedProfile),
         });
+      }
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (url === "/api/ai" && lastMsg?.content?.includes("Extract the company profile")) {
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
       }
       if (url === "/api/ai") {
         answerCount++;
@@ -210,9 +222,10 @@ describe("ProfileView — API wiring", () => {
     }
 
     await waitFor(() => {
-      // Should fetch the saved profile via GET /api/profile
-      expect(mockFetch).toHaveBeenCalledWith("/api/profile");
-      // Should set the profile from the fetched data
+      // New user: should extract via Claude then POST to /api/profile
+      expect(mockFetch).toHaveBeenCalledWith("/api/profile", expect.objectContaining({
+        method: "POST",
+      }));
       expect(agent.setProfile).toHaveBeenCalledWith(savedProfile);
     });
   });
