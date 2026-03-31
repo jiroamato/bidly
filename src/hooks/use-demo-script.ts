@@ -20,12 +20,14 @@ export function useDemoScript(
   fillInput: (text: string) => void
 ) {
   const [scriptIndex, setScriptIndex] = useState<Record<AgentId, number>>(makeInitialIndices);
+  const scriptIndexRef = useRef(scriptIndex);
+  scriptIndexRef.current = scriptIndex;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasMoreScripts = scriptIndex[activeAgent] < DEMO_SCRIPTS[activeAgent].length;
 
   const advanceScript = useCallback(() => {
-    const index = scriptIndex[activeAgent];
+    const index = scriptIndexRef.current[activeAgent];
     const messages = DEMO_SCRIPTS[activeAgent];
 
     if (index >= messages.length) return;
@@ -50,7 +52,7 @@ export function useDemoScript(
     }, CHAR_DELAY_MS);
 
     setScriptIndex((prev) => ({ ...prev, [activeAgent]: index + 1 }));
-  }, [activeAgent, scriptIndex, fillInput]);
+  }, [activeAgent, fillInput]);
 
   const resetScripts = useCallback(() => {
     if (intervalRef.current !== null) {
