@@ -7,6 +7,7 @@ import { AgentState } from "@/hooks/use-agent";
 
 interface ComplianceViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
 
 type CheckStatus = "pass" | "fail" | "warn" | "pending";
@@ -44,7 +45,7 @@ const RESULT_STYLES: Record<string, { border: string; color: string }> = {
   not_eligible: { border: "var(--accent-red)", color: "var(--accent-red)" },
 };
 
-export function ComplianceView({ agent }: ComplianceViewProps) {
+export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
   const tender = agent.selectedTender;
   const profile = agent.profile;
 
@@ -591,6 +592,7 @@ export function ComplianceView({ agent }: ComplianceViewProps) {
               agentId="compliance"
               onSend={handleSend}
               disabled={isTyping || isGenerating}
+              externalValue={externalValue}
             />
           </div>
         </div>

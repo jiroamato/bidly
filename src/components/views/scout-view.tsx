@@ -7,13 +7,14 @@ import { AgentState } from "@/hooks/use-agent";
 
 interface ScoutViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
 
 type TenderWithScore = Tender & { match_score: number };
 
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
-export function ScoutView({ agent }: ScoutViewProps) {
+export function ScoutView({ agent, externalValue }: ScoutViewProps) {
   const [activeFilter, setActiveFilter] = useState("All Matches");
   const [tenders, setTenders] = useState<TenderWithScore[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,6 +261,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
         agentId="scout"
         profileId={agent.profile?.id}
         tenderId={agent.selectedTender?.id}
+        externalValue={externalValue}
       />
     </div>
   );

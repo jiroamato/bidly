@@ -13,9 +13,10 @@ interface ChatPanelProps {
   selectedTender?: Tender | null;
   /** @deprecated Use profileId instead. Kept for backward compat with views not yet migrated. */
   profile?: BusinessProfile | null;
+  externalValue?: string;
 }
 
-export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile }: ChatPanelProps) {
+export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile, externalValue }: ChatPanelProps) {
   // Derive IDs from objects if the new-style props aren't provided (backward compat)
   const resolvedProfileId = profileId ?? profile?.id;
   const resolvedTenderId = tenderId ?? selectedTender?.id;
@@ -25,6 +26,13 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const agent = getAgent(agentId);
+
+  // Sync external value (e.g. from demo script) into the input field
+  useEffect(() => {
+    if (externalValue !== undefined) {
+      setInputValue(externalValue);
+    }
+  }, [externalValue]);
 
   // Auto-expand only when message count increases
   const prevCountRef = useRef(0);

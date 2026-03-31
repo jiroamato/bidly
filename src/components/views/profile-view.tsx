@@ -7,6 +7,7 @@ import { AgentState } from "@/hooks/use-agent";
 
 interface ProfileViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
 
 const INITIAL_MESSAGE =
@@ -266,7 +267,7 @@ function ProfileCard({
 
 /* ---------- COMPONENT ---------- */
 
-export function ProfileView({ agent }: ProfileViewProps) {
+export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: INITIAL_MESSAGE, timestamp: Date.now() },
   ]);
@@ -699,6 +700,7 @@ export function ProfileView({ agent }: ProfileViewProps) {
               agentId="profile"
               onSend={handleSend}
               disabled={isTyping}
+              externalValue={externalValue}
             />
           </div>
         </div>
