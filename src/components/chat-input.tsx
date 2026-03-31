@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AgentId } from "@/lib/types";
 import { getAgent } from "@/lib/agents";
 
@@ -8,11 +8,18 @@ interface ChatInputProps {
   agentId: AgentId;
   onSend: (message: string) => void;
   disabled?: boolean;
+  externalValue?: string;
 }
 
-export function ChatInput({ agentId, onSend, disabled }: ChatInputProps) {
+export function ChatInput({ agentId, onSend, disabled, externalValue }: ChatInputProps) {
   const [value, setValue] = useState("");
   const agent = getAgent(agentId);
+
+  useEffect(() => {
+    if (externalValue !== undefined) {
+      setValue(externalValue);
+    }
+  }, [externalValue]);
 
   const handleSubmit = () => {
     if (!value.trim() || disabled) return;
