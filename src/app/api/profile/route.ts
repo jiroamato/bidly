@@ -2,19 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { extractKeywordsFromCapabilities } from "./extract-keywords";
 
-/**
- * Extract keywords from capabilities text when the AI extraction returns none.
- * Splits on commas, "and", and common filler phrases to find service descriptions.
- */
-function extractKeywordsFromCapabilities(capabilities: string): string[] {
-  if (!capabilities) return [];
-  const phrases = capabilities
-    .split(/,|\band\b|including|such as|also|our core|services include/i)
-    .map((s) => s.trim().replace(/^(our|we|the|for)\s+/i, "").trim())
-    .filter((s) => s.length > 3 && s.length < 80);
-  return [...new Set(phrases)].slice(0, 15);
-}
-
 export async function GET() {
   const supabase = createServerClient();
   // For hackathon: return the first (demo) profile
