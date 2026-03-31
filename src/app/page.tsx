@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useCallback } from "react";
 import { useAgent } from "@/hooks/use-agent";
 import { Sidebar } from "@/components/sidebar";
 import { MainHeader } from "@/components/main-header";
@@ -11,6 +12,22 @@ import { WriterView } from "@/components/views/writer-view";
 
 export default function Home() {
   const agent = useAgent();
+
+  const handleDemoReset = useCallback(async () => {
+    await fetch("/api/profile", { method: "DELETE" });
+    agent.resetDemo();
+  }, [agent]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "K") {
+        e.preventDefault();
+        handleDemoReset();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleDemoReset]);
 
   const views = {
     profile: <ProfileView agent={agent} />,
