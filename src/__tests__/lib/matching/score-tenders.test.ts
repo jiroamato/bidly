@@ -77,7 +77,7 @@ describe("combineTenderScores", () => {
     expect(cyber.matched_keywords).toContain("cybersecurity");
   });
 
-  it("falls back to keyword-only when no embedding similarities", () => {
+  it("uses keyword score at full weight when no embedding similarities", () => {
     const profile = makeProfile();
     const tenders = [
       makeTender(),
@@ -90,7 +90,8 @@ describe("combineTenderScores", () => {
 
     const cyber = result.find((r) => r.id === 1)!;
     expect(cyber.embedding_score).toBe(0);
-    expect(cyber.match_score).toBe(Math.round(cyber.keyword_score * 0.4));
+    // Without embeddings, keyword score is used at full weight (not * 0.4)
+    expect(cyber.match_score).toBe(cyber.keyword_score);
   });
 
   it("sorts by match_score descending", () => {

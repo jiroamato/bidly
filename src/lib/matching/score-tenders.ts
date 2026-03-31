@@ -11,22 +11,25 @@ export function combineTenderScores(
   const keywords = profile.keywords || [];
   const synonyms = profile.keyword_synonyms || {};
 
-  const tenderTexts = tenders.map(
-    (t) => `${t.title} ${t.description}`
-  );
-  const idfMap = computeIdf(keywords, synonyms, tenderTexts);
+  // Use equal weights (1.0 per keyword) for simple, intuitive scoring
+  const equalIdf = new Map(keywords.map((k) => [k, 1.0]));
+  const hasEmbeddings = embeddingSimilarities.size > 0;
 
   const scored: ScoredTender[] = tenders.map((tender) => {
     const tenderText = `${tender.title} ${tender.description}`;
-    const keywordResult = scoreByKeywords(keywords, synonyms, tenderText, idfMap);
+    const keywordResult = scoreByKeywords(keywords, synonyms, tenderText, equalIdf);
 
     const similarity = embeddingSimilarities.get(tender.id) ?? 0;
     const embeddingScore = Math.round(Math.max(0, similarity) * 100);
 
-    const matchScore = Math.round(
-      keywordResult.score * SCORING_WEIGHTS.keyword +
-      embeddingScore * SCORING_WEIGHTS.embedding
-    );
+    // When embeddings are available, blend both scores.
+    // When no embeddings, use keyword score at full weight.
+    const matchScore = hasEmbeddings
+      ? Math.round(
+          keywordResult.score * SCORING_WEIGHTS.keyword +
+          embeddingScore * SCORING_WEIGHTS.embedding
+        )
+      : keywordResult.score;
 
     return {
       ...tender,
