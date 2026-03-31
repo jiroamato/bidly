@@ -5,6 +5,7 @@ import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
 import { consumeSSEStream } from "@/lib/sse";
+import { MarkdownMessage } from "@/components/markdown-message";
 
 interface ProfileViewProps {
   agent: AgentState;
@@ -663,10 +664,10 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
                       Profile Agent
                     </div>
                     <div
-                      className="text-[15px] leading-[1.7]"
+                      className="text-[15px]"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      {msg.content}
+                      <MarkdownMessage content={msg.content} />
                     </div>
 
                     {/* Province buttons — step 1, hidden if province already mentioned */}
