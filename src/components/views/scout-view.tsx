@@ -9,7 +9,14 @@ interface ScoutViewProps {
   agent: AgentState;
 }
 
-type TenderWithScore = Tender & { match_score: number };
+type TenderWithScore = Tender & {
+  match_score: number;
+  bm25_score: number;
+  category_score: number;
+  synonym_score: number;
+  location_score: number;
+  matched_keywords: string[];
+};
 
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
