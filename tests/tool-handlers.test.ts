@@ -15,8 +15,10 @@ const mockEq = vi.fn(() => ({
   limit: mockLimit,
   gte: mockGte,
 }));
+const mockOr = vi.fn(() => ({ order: mockOrder, limit: mockLimit }));
 const mockSelect = vi.fn(() => ({
   eq: mockEq,
+  or: mockOr,
   order: mockOrder,
   limit: mockLimit,
   ilike: mockIlike,
