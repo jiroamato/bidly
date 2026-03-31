@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AgentId, BusinessProfile, Tender } from "@/lib/types";
 import { getAgent } from "@/lib/agents";
 import { useChat } from "@/hooks/use-chat";
@@ -25,6 +25,7 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const agent = getAgent(agentId);
 
   // Sync external value (e.g. from demo script) into the input field
@@ -33,6 +34,15 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
       setInputValue(externalValue);
     }
   }, [externalValue]);
+
+  // Auto-grow textarea height
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [inputValue]);
 
   // Auto-expand only when message count increases
   const prevCountRef = useRef(0);
@@ -242,14 +252,20 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
           >
             {agent.name}
           </div>
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
             placeholder={agent.chatPlaceholder}
             disabled={isLoading}
-            className="flex-1 border-none outline-none text-sm px-4 py-3.5"
+            rows={1}
+            className="flex-1 border-none outline-none text-sm px-4 py-3.5 resize-none"
             style={{
               fontFamily: "var(--font-sans)",
               color: "var(--text-primary)",
