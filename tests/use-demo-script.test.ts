@@ -34,8 +34,8 @@ describe("useDemoScript", () => {
       useDemoScript("writer", fillInput, onDemoAction)
     );
 
-    // Advance through all 4 string entries
-    for (let i = 0; i < 4; i++) {
+    // Advance through all 5 string entries
+    for (let i = 0; i < 5; i++) {
       act(() => {
         result.current.advanceScript();
       });
@@ -49,7 +49,7 @@ describe("useDemoScript", () => {
     fillInput.mockClear();
     onDemoAction.mockClear();
 
-    // 5th entry is the command
+    // 6th entry is the command
     act(() => {
       result.current.advanceScript();
     });
@@ -65,8 +65,8 @@ describe("useDemoScript", () => {
       useDemoScript("writer", fillInput, onDemoAction)
     );
 
-    // Advance through all 5
-    for (let i = 0; i < 5; i++) {
+    // Advance through all 6
+    for (let i = 0; i < 6; i++) {
       act(() => {
         result.current.advanceScript();
       });

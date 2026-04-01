@@ -86,19 +86,18 @@ export async function POST(request: NextRequest) {
           console.log(`[AI] agent=${agentId} stop_reason=${finalMessage.stop_reason} content_types=${finalMessage.content.map(b => b.type).join(",")}`);
 
           if (finalMessage.stop_reason !== "tool_use") {
-            // No tool use — we already streamed all tokens.
-            // For writer agent: force saveDraft if it wasn't called
+            // No tool use — we already streamed all tokens. Close stream first.
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+            // Writer agent: force saveDraft in background (don't block the client)
             if (agentId === "writer" && profileId && tenderId) {
               const streamedText = bufferedTokens.join("");
-              // Include the assistant's response so the follow-up can see what was drafted
               const messagesWithResponse = [
                 ...loopMessages,
                 { role: "assistant" as const, content: finalMessage.content },
               ];
-              await forceSaveDraftIfNeeded(streamedText, messagesWithResponse, systemPrompt, tools, profileId, tenderId);
+              forceSaveDraftIfNeeded(streamedText, messagesWithResponse, systemPrompt, tools, profileId, tenderId);
             }
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-            controller.close();
             return;
           }
 
@@ -193,18 +192,19 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Writer agent: force saveDraft if it wasn't called during tool loop
+          // Close stream first so client gets input back immediately
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+
+          // Writer agent: force saveDraft in background if it wasn't called
           if (agentId === "writer" && !calledSaveDraft && profileId && tenderId) {
             const allText = [...bufferedTokens, ...textBlocks].join("");
-            loopMessages = [
+            const finalMessages = [
               ...loopMessages,
               { role: "assistant" as const, content: response.content },
             ];
-            await forceSaveDraftIfNeeded(allText, loopMessages, systemPrompt, tools, profileId, tenderId);
+            forceSaveDraftIfNeeded(allText, finalMessages, systemPrompt, tools, profileId, tenderId);
           }
-
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
         } catch (err: any) {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`)
