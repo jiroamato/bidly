@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AgentId, AgentStatus, BusinessProfile, Tender } from "@/lib/types";
 import { AGENT_ORDER } from "@/lib/agents";
 
@@ -37,23 +37,6 @@ export function useAgent(): AgentState {
   // Derived IDs for passing to API calls
   const profileId = profile?.id ?? null;
   const tenderId = selectedTender?.id ?? null;
-
-  // Hydrate from Supabase on mount
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.id) {
-          setProfile(data);
-          setStatuses((prev) => ({
-            ...prev,
-            profile: "completed",
-            scout: prev.scout === "locked" ? "active" : prev.scout,
-          }));
-        }
-      })
-      .catch((err) => { if (process.env.NODE_ENV !== 'production') console.warn('Profile hydration failed:', err); });
-  }, []);
 
   const setActiveAgent = useCallback(
     (id: AgentId) => {
