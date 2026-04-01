@@ -288,11 +288,28 @@ const PROFILE_COLUMNS = new Set([
   "is_canadian", "security_clearance", "project_size_min", "project_size_max",
 ]);
 
+/**
+ * Normalize NAICS codes — the AI sometimes sends objects like
+ * {code: "541510", description: "..."} instead of plain "541510".
+ */
+function normalizeNaicsCodes(codes: any[]): string[] {
+  return codes.map((c) => {
+    if (typeof c === "string") return c;
+    if (typeof c === "object" && c?.code) return String(c.code);
+    return String(c);
+  });
+}
+
 function stripUnknownColumns(data: Record<string, any>, validColumns: Set<string>): Record<string, any> {
   const cleaned: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
     if (validColumns.has(key)) {
-      cleaned[key] = value;
+      // Normalize NAICS codes to plain strings
+      if (key === "naics_codes" && Array.isArray(value)) {
+        cleaned[key] = normalizeNaicsCodes(value);
+      } else {
+        cleaned[key] = value;
+      }
     }
   }
   return cleaned;
