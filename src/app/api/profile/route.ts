@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { extractKeywordsFromCapabilities } from "./extract-keywords";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = createServerClient();
-  // For hackathon: return the first (demo) profile
-  const { data, error } = await supabase
-    .from("business_profiles")
-    .select("*")
-    .order("id")
-    .limit(1)
-    .single();
+  const id = request.nextUrl.searchParams.get("id");
 
+  let query = supabase.from("business_profiles").select("*");
+  if (id) {
+    query = query.eq("id", Number(id));
+  } else {
+    query = query.order("id").limit(1);
+  }
+
+  const { data, error } = await query.single();
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
   return NextResponse.json(data);
 }
