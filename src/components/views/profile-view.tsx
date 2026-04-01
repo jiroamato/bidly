@@ -599,10 +599,13 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   );
 
   const finalizeProfile = useCallback(async () => {
-    // Always try fetching from Supabase first — updateProfile tool calls
-    // during the conversation should have already created/updated the row.
+    // Fetch the specific profile we've been updating during the conversation.
+    // Using the known profile id avoids returning the wrong row when multiple
+    // empty seed profiles exist (e.g. React strict mode double-mount).
+    const pid = agent.profile?.id;
+    const url = pid ? `/api/profile?id=${pid}` : "/api/profile";
     try {
-      const res = await fetch("/api/profile");
+      const res = await fetch(url);
       if (res.ok) {
         const profile = await res.json();
         if (profile?.id && profile.company_name) {
