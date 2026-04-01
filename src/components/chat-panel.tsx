@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { AgentId, BusinessProfile, Tender } from "@/lib/types";
 import { getAgent } from "@/lib/agents";
 import { useChat } from "@/hooks/use-chat";
+import { useChatHistory } from "@/contexts/chat-history-context";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { Copy, Check } from "lucide-react";
 
@@ -50,7 +51,14 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
   const resolvedProfileId = profileId ?? profile?.id;
   const resolvedTenderId = tenderId ?? selectedTender?.id;
 
-  const { messages, isLoading, isStreaming, error, sendMessage } = useChat(agentId, resolvedProfileId, resolvedTenderId);
+  const [contextMessages, setContextMessages] = useChatHistory(agentId);
+  const { messages, isLoading, isStreaming, error, sendMessage } = useChat(
+    agentId,
+    resolvedProfileId,
+    resolvedTenderId,
+    contextMessages,
+    setContextMessages,
+  );
   const prevIsLoadingRef = useRef(false);
   useEffect(() => {
     if (prevIsLoadingRef.current && !isLoading) {
