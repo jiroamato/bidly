@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ChatPanel } from "@/components/chat-panel";
+import { MarkdownMessage } from "@/components/markdown-message";
 import { AgentState } from "@/hooks/use-agent";
 
 interface WriterViewProps {
@@ -98,8 +99,8 @@ function BidPreview({ draftSections }: { draftSections: Record<string, string> }
               <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, paddingBottom: 8, borderBottom: "1px solid #ddd" }}>
                 {section.label}
               </h2>
-              <div style={{ fontSize: 13, lineHeight: 1.9, textAlign: "justify", whiteSpace: "pre-wrap" }}>
-                {draftSections[section.id]}
+              <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+                <MarkdownMessage content={draftSections[section.id]} />
               </div>
             </div>
           ))}
@@ -344,7 +345,7 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
                     </span>
                   </div>
                   <div
-                    className="border p-5 text-[14px] leading-relaxed whitespace-pre-wrap"
+                    className="border p-5 text-[14px] leading-relaxed"
                     style={{
                       background: "var(--white)",
                       borderColor: "var(--bidly-border)",
@@ -352,7 +353,7 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
                       minHeight: 80,
                     }}
                   >
-                    {sectionContent}
+                    <MarkdownMessage content={sectionContent} />
                   </div>
                 </div>
               ) : (
