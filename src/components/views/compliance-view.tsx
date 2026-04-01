@@ -66,8 +66,14 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
+  // Auto-scroll — throttled to avoid layout thrashing during streaming
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollTimerRef.current) return;
+    scrollTimerRef.current = setTimeout(() => {
+      scrollTimerRef.current = null;
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 120);
   }, [messages, isTyping, assessment, isGenerating]);
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;

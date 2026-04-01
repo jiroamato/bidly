@@ -93,9 +93,14 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
     prevCountRef.current = messages.length;
   }, [messages.length]);
 
-  // Auto-scroll to bottom of thread
+  // Auto-scroll to bottom — throttled to avoid layout thrashing during streaming
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollTimerRef.current) return; // already scheduled
+    scrollTimerRef.current = setTimeout(() => {
+      scrollTimerRef.current = null;
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 120);
   }, [messages, isLoading]);
 
   const handleSubmit = () => {
