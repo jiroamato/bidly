@@ -44,13 +44,7 @@ export function ChatHistoryProvider({ children }: { children: ReactNode }) {
   );
 
   const clearAllMessages = useCallback(() => {
-    setHistory({
-      profile: [],
-      scout: [],
-      analyst: [],
-      compliance: [],
-      writer: [],
-    });
+    setHistory({ ...INITIAL_STATE });
   }, []);
 
   return (
@@ -67,9 +61,10 @@ export function useChatHistory(
   if (!ctx) throw new Error("useChatHistory must be used within ChatHistoryProvider");
 
   const messages = ctx.history[agentId];
+  const { setAgentMessages } = ctx;
   const setMessages: Dispatch<SetStateAction<ChatMessage[]>> = useCallback(
-    (updater) => ctx.setAgentMessages(agentId, updater),
-    [ctx.setAgentMessages, agentId],
+    (updater) => setAgentMessages(agentId, updater),
+    [setAgentMessages, agentId],
   );
 
   return [messages, setMessages];
