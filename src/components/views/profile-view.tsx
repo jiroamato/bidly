@@ -398,6 +398,13 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
 
   // If agent already has a profile (returning user), show summary immediately
   const hasExistingProfile = agent.profile !== null && !editMode;
+  console.log("[ProfileView] render", {
+    hasExistingProfile,
+    editMode,
+    profileId: agent.profile?.id ?? null,
+    companyName: agent.profile?.company_name ?? null,
+    profileStatus: agent.statuses.profile,
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -406,7 +413,11 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   // Create an empty profile row on mount for new users so we have a profile_id
   // for updateProfile tool calls during the conversation
   useEffect(() => {
-    if (agent.profile?.id) return; // already have one
+    if (agent.profile?.id) {
+      console.log("[ProfileView] skipping empty profile creation — already have id:", agent.profile.id);
+      return;
+    }
+    console.log("[ProfileView] creating empty profile row...");
     let cancelled = false;
     (async () => {
       try {
@@ -417,10 +428,11 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         });
         if (res.ok && !cancelled) {
           const saved = await res.json();
+          console.log("[ProfileView] empty profile created:", { id: saved?.id, company_name: saved?.company_name });
           if (saved?.id) agent.setProfile(saved);
         }
-      } catch {
-        // non-critical — extraction fallback still works
+      } catch (err) {
+        console.error("[ProfileView] empty profile creation failed:", err);
       }
     })();
     return () => { cancelled = true; };
