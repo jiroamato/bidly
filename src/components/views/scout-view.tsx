@@ -14,8 +14,9 @@ const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federa
 
 export function ScoutView({ agent, externalValue }: ScoutViewProps) {
   const [activeFilter, setActiveFilter] = useState("All Matches");
-  const [tenders, setTenders] = useState<TenderWithScore[]>([]);
-  const [loading, setLoading] = useState(true);
+  const hasCachedTenders = agent.matchedTenders.length > 0;
+  const [tenders, setTenders] = useState<TenderWithScore[]>(agent.matchedTenders);
+  const [loading, setLoading] = useState(!hasCachedTenders);
 
   const profileId = agent.profile?.id;
 
@@ -39,16 +40,18 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
       }));
       scored.sort((a, b) => b.match_score - a.match_score);
       setTenders(scored);
+      agent.setMatchedTenders(scored);
     } catch (err) {
       console.error("Failed to load tenders:", err);
     } finally {
       setLoading(false);
     }
-  }, [profileId]);
+  }, [profileId, agent.setMatchedTenders]);
 
   useEffect(() => {
+    if (hasCachedTenders) return;
     loadTenders();
-  }, [loadTenders]);
+  }, [loadTenders, hasCachedTenders]);
 
   const filtered = tenders.filter((t) => {
     if (activeFilter === "High Match") return t.match_score >= 80;
