@@ -15,14 +15,21 @@ export default function Home() {
   const agent = useAgent();
 
   const [demoInputValue, setDemoInputValue] = useState<string | undefined>(undefined);
+  const [writerPreviewSection, setWriterPreviewSection] = useState<"preview" | undefined>(undefined);
   const fillDemoInput = useCallback((text: string) => {
     setDemoInputValue(text);
   }, []);
-  const demoScript = useDemoScript(agent.activeAgent, fillDemoInput);
+  const handleDemoAction = useCallback((command: { action: string }) => {
+    if (command.action === "switch-to-preview") {
+      setWriterPreviewSection("preview");
+    }
+  }, []);
+  const demoScript = useDemoScript(agent.activeAgent, fillDemoInput, handleDemoAction);
 
   // Clear external value when switching agents
   useEffect(() => {
     setDemoInputValue(undefined);
+    setWriterPreviewSection(undefined);
   }, [agent.activeAgent]);
 
   const handleDemoReset = useCallback(async () => {
@@ -34,6 +41,7 @@ export default function Home() {
     agent.resetDemo();
     demoScript.resetScripts();
     setDemoInputValue(undefined);
+    setWriterPreviewSection(undefined);
   }, [agent.resetDemo, demoScript.resetScripts]);
 
   useEffect(() => {
@@ -56,7 +64,7 @@ export default function Home() {
     scout: <ScoutView agent={agent} externalValue={demoInputValue} />,
     analyst: <AnalystView agent={agent} externalValue={demoInputValue} />,
     compliance: <ComplianceView agent={agent} externalValue={demoInputValue} />,
-    writer: <WriterView agent={agent} externalValue={demoInputValue} />,
+    writer: <WriterView agent={agent} externalValue={demoInputValue} externalActiveSection={writerPreviewSection} />,
   };
 
   return (
