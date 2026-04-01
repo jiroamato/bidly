@@ -36,6 +36,24 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export function MarkdownMessage({ content, isStreaming = false }: MarkdownMessageProps) {
+  // During streaming, render plain text with whitespace preserved — skip
+  // expensive markdown parsing until the stream completes.
+  if (isStreaming) {
+    return (
+      <div className="markdown-message">
+        <div className="leading-[1.7] whitespace-pre-wrap">{content}</div>
+        <span
+          data-streaming-cursor=""
+          className="inline-block w-[2px] h-[1em] ml-0.5 align-text-bottom"
+          style={{
+            background: "var(--text-primary)",
+            animation: "cursorBlink 1s step-end infinite",
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="markdown-message">
       <ReactMarkdown
@@ -200,16 +218,6 @@ export function MarkdownMessage({ content, isStreaming = false }: MarkdownMessag
       >
         {content}
       </ReactMarkdown>
-      {isStreaming && (
-        <span
-          data-streaming-cursor=""
-          className="inline-block w-[2px] h-[1em] ml-0.5 align-text-bottom"
-          style={{
-            background: "var(--text-primary)",
-            animation: "cursorBlink 1s step-end infinite",
-          }}
-        />
-      )}
     </div>
   );
 }
