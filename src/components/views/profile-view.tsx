@@ -569,7 +569,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
       const res = await fetch("/api/profile");
       if (res.ok) {
         const profile = await res.json();
-        if (profile?.id && profile.company_name && profile.capabilities) {
+        if (profile?.id && profile.company_name) {
           agent.setProfile(profile);
           setIsComplete(true);
           setEditMode(false);
