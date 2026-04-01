@@ -5,7 +5,7 @@ export type DemoEntry = string | { action: "switch-to-preview" };
 export const DEMO_SCRIPTS: Record<AgentId, DemoEntry[]> = {
   profile: [
     "Our company is Northpoint Digital Solutions.",
-    "We do IT consulting, systems integration, and cybersecurity for the federal government. We also handle cloud infrastructure, data analytics, and project management.",
+    "We provide IT consulting, systems integration, cybersecurity, cloud infrastructure, software maintenance, helpdesk support, data analytics, IT audit, change management, training delivery, and project management for the federal government.",
     "Yes, those NAICS codes look correct.",
     "We've been in business for 12 years. Our typical project size ranges from $50,000 for smaller consulting engagements up to $2,000,000 for large systems integration projects.",
     "We have WSIB coverage in good standing, a bonding limit of $1,000,000, and professional liability insurance of $5,000,000. We also hold ISO 27001 certification for information security management, and several of our team members have Secret-level Government of Canada security clearances.",
