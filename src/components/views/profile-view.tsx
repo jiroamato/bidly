@@ -859,8 +859,8 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
             </div>
           ))}
 
-          {/* Typing indicator */}
-          {isTyping && (
+          {/* Typing indicator — only show before first token arrives */}
+          {isTyping && (!messages.length || messages[messages.length - 1].role !== "assistant" || !messages[messages.length - 1].content) && (
             <div className="flex justify-start">
               <div className="flex gap-4">
                 <div
