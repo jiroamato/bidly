@@ -66,17 +66,38 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  // Auto-scroll — throttled to avoid layout thrashing during streaming
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (scrollTimerRef.current) return;
-    scrollTimerRef.current = setTimeout(() => {
-      scrollTimerRef.current = null;
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 120);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping, assessment, isGenerating]);
 
-  const userMessageCount = messages.filter((m) => m.role === "user").length;
+  // Step progress based on topics covered in user messages
+  const completedSteps = (() => {
+    const userText = messages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content.toLowerCase())
+      .join(" ");
+    if (!messages.some((m) => m.role === "user")) return 0;
+
+    let steps = 0;
+
+    // Insurance: Canadian ownership, PBN, insurance, bonding mentioned
+    if (/\b(canadian|insur|liabil|pbn|procurement business|bonding|bond)\b/.test(userText))
+      steps = 1;
+
+    // Certifications: security clearance, ISO, WSIB, certs mentioned
+    if (steps >= 1 && /\b(clearance|secret|iso|wsib|certif|designated)\b/.test(userText))
+      steps = 2;
+
+    // Requirements: subcontracting, SA holder, supply arrangement
+    if (steps >= 2 && /\b(subcontract|sa holder|supply arrangement|proservices?|standing offer)\b/.test(userText))
+      steps = 3;
+
+    // Review: user confirmed for assessment
+    if (steps >= 3 && /\b(yes.*accurate|run.*assessment|looks?\s*good|that'?s?\s*correct|please\s*run)\b/.test(userText))
+      steps = 4;
+
+    return steps;
+  })();
 
   const runComplianceAssessment = useCallback(
     async (conversation: ChatMessage[]) => {
@@ -243,8 +264,8 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
           {!assessment && (
             <div className="flex items-center gap-3">
               {["Insurance", "Certifications", "Requirements", "Review"].map((label, i) => {
-                const isDone = i < userMessageCount;
-                const isCurrent = i === userMessageCount;
+                const isDone = i < completedSteps;
+                const isCurrent = i === completedSteps;
                 return (
                   <div key={label} className="flex items-center gap-2 flex-1">
                     <div

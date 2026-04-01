@@ -157,22 +157,25 @@ function BidPreview({ draftSections, companyName, tenderTitle, tenderReference, 
           </div>
         </div>
 
-        {/* Content Pages */}
-        <div style={{ ...PAGE_STYLE, padding: "72px 72px 48px 72px" }}>
-          {SECTION_DEFS.filter((s) => s.id !== "preview" && draftSections[s.id]).map((section, idx) => (
-            <div key={section.id} style={{ marginBottom: 36 }}>
-              <div style={{ fontSize: 10, color: "#aaa", fontFamily: "Arial, sans-serif", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 4 }}>
-                Section {idx + 1}
-              </div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, paddingBottom: 8, borderBottom: "1px solid #ddd" }}>
-                {section.label}
-              </h2>
-              <div style={{ fontSize: 13, lineHeight: 1.9 }}>
-                <MarkdownMessage content={draftSections[section.id]} />
-              </div>
+        {/* Content Pages — one page per section */}
+        {SECTION_DEFS.filter((s) => s.id !== "preview" && draftSections[s.id]).map((section, idx) => (
+          <div key={section.id} style={{ ...PAGE_STYLE, padding: "72px 72px 48px 72px" }}>
+            <div style={{ fontSize: 10, color: "#aaa", fontFamily: "Arial, sans-serif", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 4 }}>
+              Section {idx + 1}
             </div>
-          ))}
-        </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, paddingBottom: 8, borderBottom: "1px solid #ddd" }}>
+              {section.label}
+            </h2>
+            <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+              <MarkdownMessage content={draftSections[section.id]} />
+            </div>
+            {/* Page footer */}
+            <div style={{ position: "absolute", bottom: 24, left: 72, right: 72, display: "flex", justifyContent: "space-between", fontSize: 9, color: "#bbb", fontFamily: "Arial, sans-serif" }}>
+              <span>{companyName || "Company Name"}</span>
+              <span>Page {idx + 2}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -93,14 +93,9 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
     prevCountRef.current = messages.length;
   }, [messages.length]);
 
-  // Auto-scroll to bottom — throttled to avoid layout thrashing during streaming
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Auto-scroll to bottom of thread
   useEffect(() => {
-    if (scrollTimerRef.current) return; // already scheduled
-    scrollTimerRef.current = setTimeout(() => {
-      scrollTimerRef.current = null;
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 120);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
   const handleSubmit = () => {
@@ -109,6 +104,21 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
     sendMessage(text);
     setInputValue("");
   };
+
+  // Global Enter key — submit from anywhere on the page
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+  useEffect(() => {
+    const onGlobalEnter = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return;
+      e.preventDefault();
+      handleSubmitRef.current();
+    };
+    window.addEventListener("keydown", onGlobalEnter);
+    return () => window.removeEventListener("keydown", onGlobalEnter);
+  }, []);
 
   const hasMessages = messages.length > 0;
 

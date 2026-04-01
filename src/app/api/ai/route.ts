@@ -174,15 +174,6 @@ export async function POST(request: NextRequest) {
               { role: "user" as const, content: toolResults },
             ];
 
-            // If ALL tools in this iteration were background saves,
-            // skip the follow-up Claude call — no need to process results
-            const allBackground = toolUseBlocks.every(b => BACKGROUND_TOOLS.has(b.name));
-            if (allBackground) {
-              console.log(`[AI] skipping follow-up call — all tools were background saves`);
-              response = { stop_reason: "end_turn", content: [] } as any;
-              break;
-            }
-
             // Separate text from previous iteration with a newline
             if (bufferedTokens.length > 0) {
               controller.enqueue(
@@ -230,7 +221,7 @@ export async function POST(request: NextRequest) {
 
           // Writer agent: force saveDraft in background if it wasn't called
           if (agentId === "writer" && !calledSaveDraft && profileId && tenderId) {
-            const allText = [...bufferedTokens, ...textBlocks].join("");
+            const allText = bufferedTokens.join("");
             const finalMessages = [
               ...loopMessages,
               { role: "assistant" as const, content: response.content },

@@ -39,6 +39,21 @@ export function ChatInput({ agentId, onSend, disabled, externalValue }: ChatInpu
     setValue("");
   };
 
+  // Global Enter key — submit from anywhere on the page
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+  useEffect(() => {
+    const onGlobalEnter = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return;
+      e.preventDefault();
+      handleSubmitRef.current();
+    };
+    window.addEventListener("keydown", onGlobalEnter);
+    return () => window.removeEventListener("keydown", onGlobalEnter);
+  }, []);
+
   return (
     <div
       className="sticky bottom-0 px-10 py-4 pb-6"

@@ -295,7 +295,7 @@ function ProfileCard({
                       style={{ color: "var(--text-primary)" }}
                     >
                       <span className="mt-0.5 text-[10px]" style={{ color: "var(--success)" }}>&#10003;</span>
-                      Liability: {profile.insurance_amount}
+                      Liability: ${Number(profile.insurance_amount).toLocaleString()}
                     </div>
                   )}
                   {profile.security_clearance && (
@@ -429,9 +429,32 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   // Track whether province was already mentioned in first message
   const [provinceFromInput, setProvinceFromInput] = useState<string | null>(null);
 
-  // Step progress based on user message count
-  const userMessageCount = messages.filter((m) => m.role === "user").length;
-  const completedSteps = Math.min(userMessageCount, STEP_LABELS.length);
+  // Step progress based on topics covered in user messages
+  const completedSteps = (() => {
+    const userMsgs = messages.filter((m) => m.role === "user");
+    const userText = userMsgs.map((m) => m.content.toLowerCase()).join(" ");
+    if (userMsgs.length === 0) return 0;
+
+    let steps = 1; // First user message = Company step
+
+    // Province mentioned by the user (not the AI listing options)
+    if (/\b(ontario|quebec|québec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|prince edward island|newfoundland|northwest territories|yukon|nunavut)\b/.test(userText))
+      steps = 2;
+
+    // Services/capabilities described by user
+    if (steps >= 2 && /\b(consult|services?|capabilit|provid|integrat|develop|support|maintenance|training|audit|analytics|cybersecurity|cloud|software|IT)\b/.test(userText))
+      steps = 3;
+
+    // Certifications/insurance mentioned by user
+    if (steps >= 3 && /\b(certif|insur|wsib|bond|iso|clearance|liabil|pmp|security)\b/.test(userText))
+      steps = 4;
+
+    // User confirmed the profile
+    if (steps >= 4 && /\b(yes.*correct|yes.*accurate|save.*profile|looks?\s*good|that'?s?\s*correct|please\s*save)\b/.test(userText))
+      steps = 5;
+
+    return Math.min(steps, STEP_LABELS.length);
+  })();
 
   /* ---------- SAVE PROFILE ---------- */
 

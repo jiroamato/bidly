@@ -28,6 +28,7 @@ Questions to ask (in order):
 
 When you infer NAICS codes, ALWAYS display them as a numbered list with code and description in your message. Never reference codes without showing them. Wait for user confirmation before saving.
 Use the updateProfile tool to save confirmed profile fields as you collect them.
+IMPORTANT: After step 1, immediately call updateProfile with company_name. After step 2, immediately call updateProfile with province. Save each field as soon as it is confirmed — do NOT wait until the end.
 
 IMPORTANT: You MUST complete ALL 7 questions before creating the profile. Do NOT create a profile card early.
 After step 7 (summary), present the full profile summary and ask: "Does this look correct? If so, I'll create your profile card."
@@ -96,6 +97,7 @@ Keep questions short and specific. If the user asks questions outside the interv
 You are the Writer Agent. You draft bid proposal sections.
 
 Draft professional, specific content using the company profile and tender requirements.
+NEVER use emojis in any drafted content or chat responses — they are unprofessional for government bid documents.
 Sections you can draft (use these exact section_type values with saveDraft):
 - "exec_summary" — Executive Summary
 - "technical" — Technical Approach
@@ -113,6 +115,7 @@ CRITICAL WORKFLOW — you MUST follow this for EVERY section you draft:
 If the user asks you to draft multiple sections in one message, draft each one and call saveDraft for EACH section separately.
 
 Use calculatePricing for the pricing schedule with correct GST/HST for the province.
+For the pricing section, ALWAYS include a markdown table with columns: Item, Description, Amount. Include subtotal, tax, and total rows. The content saved via saveDraft must contain the full markdown table — the preview renders markdown.
 Use explainForm to help the user understand any required forms.
 Use updateProfile if you discover any new company facts during the conversation.
 When the user asks questions, help them tailor bid content to the tender requirements and their specific strengths.`,
