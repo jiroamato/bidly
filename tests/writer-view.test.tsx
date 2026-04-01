@@ -1,4 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Mock fetch
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
+// Mock scrollIntoView
+Element.prototype.scrollIntoView = vi.fn();
+
+// Mock useChat
+vi.mock("@/hooks/use-chat", () => ({
+  useChat: () => ({
+    messages: [],
+    isLoading: false,
+    isStreaming: false,
+    error: null,
+    sendMessage: vi.fn(),
+    addInitialMessage: vi.fn(),
+  }),
+}));
 
 describe("WriterView", () => {
   it("does not contain MOCK_CONTENT constant", async () => {
@@ -23,5 +42,35 @@ describe("WriterView", () => {
     // Should not have hardcoded "done" or "draft" in SECTIONS array
     expect(content).not.toMatch(/status:\s*["']done["']/);
     expect(content).not.toMatch(/status:\s*["']draft["']/);
+  });
+});
+
+describe("WriterView — reactive drafts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: return empty drafts
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sections: {} }),
+    });
+  });
+
+  it("accepts externalActiveSection prop", async () => {
+    const { WriterView } = await import("@/components/views/writer-view");
+    const { render } = await import("@testing-library/react");
+    const { act } = await import("@testing-library/react");
+
+    const agent = {
+      activeAgent: "writer" as const,
+      statuses: { profile: "completed" as const, scout: "completed" as const, analyst: "completed" as const, compliance: "completed" as const, writer: "active" as const },
+      profile: { id: 1, company_name: "Test" } as any,
+      selectedTender: { id: 42 } as any,
+    };
+
+    await act(async () => {
+      render(<WriterView agent={agent} externalActiveSection="preview" />);
+    });
+
+    // Should not throw — the prop is accepted
   });
 });

@@ -7,6 +7,7 @@ import { AgentState } from "@/hooks/use-agent";
 interface WriterViewProps {
   agent: AgentState;
   externalValue?: string;
+  externalActiveSection?: SectionId;
 }
 
 type SectionId = "exec_summary" | "technical" | "team" | "project_mgmt" | "safety" | "pricing" | "forms" | "preview";
@@ -108,7 +109,7 @@ function BidPreview({ draftSections }: { draftSections: Record<string, string> }
   );
 }
 
-export function WriterView({ agent, externalValue }: WriterViewProps) {
+export function WriterView({ agent, externalValue, externalActiveSection }: WriterViewProps) {
   const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
   const [draftSections, setDraftSections] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -118,6 +119,25 @@ export function WriterView({ agent, externalValue }: WriterViewProps) {
 
   const profileId = agent.profile?.id;
   const tenderId = agent.selectedTender?.id;
+
+  // Override active section from external source (e.g., demo script)
+  useEffect(() => {
+    if (externalActiveSection) {
+      setActiveSection(externalActiveSection);
+    }
+  }, [externalActiveSection]);
+
+  const refreshDrafts = useCallback(() => {
+    if (!profileId || !tenderId) return;
+    fetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.sections) {
+          setDraftSections(data.sections);
+        }
+      })
+      .catch((err) => { if (process.env.NODE_ENV !== 'production') console.warn('Failed to fetch drafts:', err); });
+  }, [profileId, tenderId]);
 
   // Fetch existing drafts on mount
   useEffect(() => {
@@ -352,7 +372,7 @@ export function WriterView({ agent, externalValue }: WriterViewProps) {
 
             {/* Chat Panel */}
             <div className="flex-shrink-0">
-              <ChatPanel agentId="writer" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} />
+              <ChatPanel agentId="writer" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} onResponseComplete={refreshDrafts} />
             </div>
           </>
         )}
