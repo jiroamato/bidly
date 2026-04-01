@@ -285,7 +285,11 @@ async function updateProfile(input: Record<string, any>): Promise<string> {
     if (!retryError && updated && updated.length > 0) return JSON.stringify(updated[0]);
   }
 
-  // No profile exists — insert a new one
+  // No profile exists — only insert if we have the required company_name field
+  if (!cleanedUpdates.company_name) {
+    return JSON.stringify({ error: "Profile not found. Cannot create — company_name is required." });
+  }
+
   const { data: inserted, error: insertError } = await supabase
     .from("business_profiles")
     .insert(cleanedUpdates)
