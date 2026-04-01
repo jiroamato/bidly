@@ -49,11 +49,12 @@ export async function POST(request: NextRequest) {
         try {
           let loopMessages = [...anthropicMessages];
           let iterations = 0;
+          let calledSaveDraft = false;
 
           // First call: use .stream() so we can pipe text tokens immediately
           // if no tool use is needed
           const initialStream = anthropic.messages.stream({
-            model: "claude-sonnet-4-6",
+            model: "claude-sonnet-4-20250514",
             max_tokens: 4096,
             system: systemPrompt,
             tools: tools.length > 0 ? tools : undefined,
@@ -82,8 +83,15 @@ export async function POST(request: NextRequest) {
           // Check the final message to see if tool use was requested
           const finalMessage = await initialStream.finalMessage();
 
+          console.log(`[AI] agent=${agentId} stop_reason=${finalMessage.stop_reason} content_types=${finalMessage.content.map(b => b.type).join(",")}`);
+
           if (finalMessage.stop_reason !== "tool_use") {
-            // No tool use — we already streamed all tokens. Done!
+            // No tool use — we already streamed all tokens.
+            // For writer agent: force saveDraft if it wasn't called
+            if (agentId === "writer" && profileId && tenderId) {
+              const streamedText = bufferedTokens.join("");
+              await forceSaveDraftIfNeeded(streamedText, loopMessages, systemPrompt, tools, profileId, tenderId);
+            }
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
             return;
@@ -115,15 +123,26 @@ export async function POST(request: NextRequest) {
               (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
             );
 
+            if (toolUseBlocks.some(b => b.name === "saveDraft")) {
+              calledSaveDraft = true;
+            }
+
+            console.log(`[AI] agent=${agentId} iteration=${iterations} tools=[${toolUseBlocks.map(b => b.name).join(", ")}]`);
+
             const toolResults = await Promise.all(
-              toolUseBlocks.map(async (block) => ({
-                type: "tool_result" as const,
-                tool_use_id: block.id,
-                content: await handleToolCall(
+              toolUseBlocks.map(async (block) => {
+                console.log(`[AI] calling tool=${block.name} input=${JSON.stringify(block.input).slice(0, 200)}`);
+                const result = await handleToolCall(
                   block.name,
                   block.input as Record<string, any>
-                ),
-              }))
+                );
+                console.log(`[AI] tool=${block.name} result=${result.slice(0, 200)}`);
+                return {
+                  type: "tool_result" as const,
+                  tool_use_id: block.id,
+                  content: result,
+                };
+              })
             );
 
             loopMessages = [
@@ -135,7 +154,7 @@ export async function POST(request: NextRequest) {
             // if we can detect it's the final iteration. Since we can't
             // predict that, use .create() for tool iterations.
             response = await anthropic.messages.create({
-              model: "claude-sonnet-4-6",
+              model: "claude-sonnet-4-20250514",
               max_tokens: 4096,
               system: systemPrompt,
               tools,
@@ -168,6 +187,16 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // Writer agent: force saveDraft if it wasn't called during tool loop
+          if (agentId === "writer" && !calledSaveDraft && profileId && tenderId) {
+            const allText = [...bufferedTokens, ...textBlocks].join("");
+            loopMessages = [
+              ...loopMessages,
+              { role: "assistant" as const, content: response.content },
+            ];
+            await forceSaveDraftIfNeeded(allText, loopMessages, systemPrompt, tools, profileId, tenderId);
+          }
+
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (err: any) {
@@ -192,5 +221,82 @@ export async function POST(request: NextRequest) {
       { error: error.message || "AI request failed" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Writer agent safety net: if the AI drafted content but didn't call saveDraft,
+ * send a silent follow-up turn forcing it to save.
+ */
+async function forceSaveDraftIfNeeded(
+  draftedText: string,
+  conversationMessages: any[],
+  systemPrompt: string,
+  tools: Anthropic.Tool[],
+  profileId: number,
+  tenderId: number
+) {
+  // Skip if the response is too short to be a real draft
+  if (draftedText.trim().length < 100) {
+    console.log("[AI] writer: skipping force-save — response too short");
+    return;
+  }
+
+  console.log("[AI] writer: saveDraft not called — forcing follow-up");
+
+  try {
+    const followUp = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      system: systemPrompt,
+      tools,
+      messages: [
+        ...conversationMessages,
+        {
+          role: "user" as const,
+          content: `You just drafted content but did not call saveDraft. Call saveDraft now for each section you drafted above. Use profile_id=${profileId} and tender_id=${tenderId}. Do not output any text — just call the tool(s).`,
+        },
+      ],
+    });
+
+    // Process any tool calls from the follow-up
+    let response = followUp;
+    let followUpIterations = 0;
+    while (response.stop_reason === "tool_use" && followUpIterations < 5) {
+      followUpIterations++;
+      const toolBlocks = response.content.filter(
+        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+      );
+
+      console.log(`[AI] writer force-save: tools=[${toolBlocks.map(b => b.name).join(", ")}]`);
+
+      const results = await Promise.all(
+        toolBlocks.map(async (block) => ({
+          type: "tool_result" as const,
+          tool_use_id: block.id,
+          content: await handleToolCall(block.name, block.input as Record<string, any>),
+        }))
+      );
+
+      response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: systemPrompt,
+        tools,
+        messages: [
+          ...conversationMessages,
+          {
+            role: "user" as const,
+            content: `You just drafted content but did not call saveDraft. Call saveDraft now for each section you drafted above. Use profile_id=${profileId} and tender_id=${tenderId}. Do not output any text — just call the tool(s).`,
+          },
+          { role: "assistant" as const, content: response.content },
+          { role: "user" as const, content: results },
+        ],
+      });
+    }
+
+    console.log("[AI] writer force-save: complete");
+  } catch (err) {
+    console.error("[AI] writer force-save failed:", err);
   }
 }
