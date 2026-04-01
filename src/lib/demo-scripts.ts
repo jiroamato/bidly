@@ -5,7 +5,7 @@ export type DemoEntry = string | { action: "switch-to-preview" };
 export const DEMO_SCRIPTS: Record<AgentId, DemoEntry[]> = {
   profile: [
     "Our company is Northpoint Digital Solutions.",
-    "We specialize in professional services for the Government of Canada. Our core capabilities include software maintenance and support, IT systems management and helpdesk support, data processing and analytics, information technology audit services, change management consulting, training and professional development delivery, equipment supply and maintenance, and construction project management. We also provide temporary help services, supply arrangement management, and system replacement project support.",
+    "We do IT consulting, systems integration, and cybersecurity for the federal government. We also handle cloud infrastructure, data analytics, and project management.",
     "Yes, those NAICS codes look correct.",
     "We've been in business for 12 years. Our typical project size ranges from $50,000 for smaller consulting engagements up to $2,000,000 for large systems integration projects.",
     "We have WSIB coverage in good standing, a bonding limit of $1,000,000, and professional liability insurance of $5,000,000. We also hold ISO 27001 certification for information security management, and several of our team members have Secret-level Government of Canada security clearances.",
@@ -33,8 +33,9 @@ export const DEMO_SCRIPTS: Record<AgentId, DemoEntry[]> = {
   writer: [
     "Draft the Executive Summary. Emphasize our 12 years of experience with federal IT projects and our current ProServices standing offer.",
     "That's good. Now draft the Technical Approach. We plan to use an Agile methodology with 2-week sprints, and we'll leverage our existing Azure Government cloud infrastructure.",
-    "Looks solid. Now draft Team & Experience and Project Management. Our lead PM is Sarah Chen with 15 years of GC project experience and PMP certification. We'll use a dedicated team of 6 — 2 senior developers, 2 intermediate, 1 QA lead, and Sarah as PM.",
+    "Looks solid. Now draft Team & Experience and Project Management. Our lead PM is William Chong with 15 years of GC project experience and PMP certification. We'll use a dedicated team of 6 — 2 senior developers, 2 intermediate, 1 QA lead, and William as PM.",
     "Great. Now draft the Safety Plan and Pricing Schedule. For pricing, our blended rate is $165/hour, estimate 2,400 hours over 12 months. Include a 10% contingency line item.",
+    "Awesome. Now let's draft the Form Guidance.",
     { action: "switch-to-preview" },
   ],
 };
