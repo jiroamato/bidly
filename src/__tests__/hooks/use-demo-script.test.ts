@@ -50,11 +50,11 @@ describe("useDemoScript", () => {
   it("no-ops when script is exhausted", () => {
     const fillInput = vi.fn();
     const { result } = renderHook(() =>
-      useDemoScript("writer", fillInput)
+      useDemoScript("analyst", fillInput)
     );
 
     act(() => result.current.advanceScript());
-    const msg = DEMO_SCRIPTS.writer[0];
+    const msg = DEMO_SCRIPTS.analyst[0];
     act(() => vi.advanceTimersByTime(msg.length * 25 + 100));
 
     fillInput.mockClear();
@@ -76,11 +76,11 @@ describe("useDemoScript", () => {
   it("hasMoreScripts is false when exhausted", () => {
     const fillInput = vi.fn();
     const { result } = renderHook(() =>
-      useDemoScript("writer", fillInput)
+      useDemoScript("analyst", fillInput)
     );
 
     act(() => result.current.advanceScript());
-    const msg = DEMO_SCRIPTS.writer[0];
+    const msg = DEMO_SCRIPTS.analyst[0];
     act(() => vi.advanceTimersByTime(msg.length * 25 + 100));
 
     expect(result.current.hasMoreScripts).toBe(false);

@@ -16,6 +16,7 @@ interface ChatPanelProps {
   /** @deprecated Use profileId instead. Kept for backward compat with views not yet migrated. */
   profile?: BusinessProfile | null;
   externalValue?: string;
+  onResponseComplete?: () => void;
 }
 
 function MessageCopyButton({ text }: { text: string }) {
@@ -44,12 +45,19 @@ function MessageCopyButton({ text }: { text: string }) {
   );
 }
 
-export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile, externalValue }: ChatPanelProps) {
+export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile, externalValue, onResponseComplete }: ChatPanelProps) {
   // Derive IDs from objects if the new-style props aren't provided (backward compat)
   const resolvedProfileId = profileId ?? profile?.id;
   const resolvedTenderId = tenderId ?? selectedTender?.id;
 
   const { messages, isLoading, isStreaming, error, sendMessage } = useChat(agentId, resolvedProfileId, resolvedTenderId);
+  const prevIsLoadingRef = useRef(false);
+  useEffect(() => {
+    if (prevIsLoadingRef.current && !isLoading) {
+      onResponseComplete?.();
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading, onResponseComplete]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -57,11 +65,15 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
   const agent = getAgent(agentId);
 
   // Sync external value (e.g. from demo script) into the input field
-  useEffect(() => {
-    if (externalValue !== undefined) {
-      setInputValue(externalValue);
+  const prevExternalRef = useRef(externalValue);
+  if (externalValue !== prevExternalRef.current) {
+    prevExternalRef.current = externalValue;
+    // Set during render (not in useEffect) to avoid extra render cycles
+    const next = externalValue ?? "";
+    if (next !== inputValue) {
+      setInputValue(next);
     }
-  }, [externalValue]);
+  }
 
   // Auto-grow textarea height
   useEffect(() => {
@@ -92,6 +104,21 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
     sendMessage(text);
     setInputValue("");
   };
+
+  // Global Enter key — submit from anywhere on the page
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+  useEffect(() => {
+    const onGlobalEnter = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return;
+      e.preventDefault();
+      handleSubmitRef.current();
+    };
+    window.addEventListener("keydown", onGlobalEnter);
+    return () => window.removeEventListener("keydown", onGlobalEnter);
+  }, []);
 
   const hasMessages = messages.length > 0;
 

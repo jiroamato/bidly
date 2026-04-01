@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { AgentId } from "@/lib/types";
-import { DEMO_SCRIPTS } from "@/lib/demo-scripts";
+import { DEMO_SCRIPTS, type DemoEntry } from "@/lib/demo-scripts";
 import { AGENT_ORDER } from "@/lib/agents";
 
 const CHAR_DELAY_MS = 25;
@@ -17,7 +17,8 @@ function makeInitialIndices(): Record<AgentId, number> {
 
 export function useDemoScript(
   activeAgent: AgentId,
-  fillInput: (text: string) => void
+  fillInput: (text: string) => void,
+  onDemoAction?: (command: Exclude<DemoEntry, string>) => void
 ) {
   const [scriptIndex, setScriptIndex] = useState<Record<AgentId, number>>(makeInitialIndices);
   const scriptIndexRef = useRef(scriptIndex);
@@ -28,9 +29,9 @@ export function useDemoScript(
 
   const advanceScript = useCallback(() => {
     const index = scriptIndexRef.current[activeAgent];
-    const messages = DEMO_SCRIPTS[activeAgent];
+    const entries = DEMO_SCRIPTS[activeAgent];
 
-    if (index >= messages.length) return;
+    if (index >= entries.length) return;
 
     // Cancel any in-progress typewriter
     if (intervalRef.current !== null) {
@@ -38,21 +39,30 @@ export function useDemoScript(
       intervalRef.current = null;
     }
 
-    const message = messages[index];
+    const entry = entries[index];
+
+    // Advance the index regardless of entry type
+    setScriptIndex((prev) => ({ ...prev, [activeAgent]: index + 1 }));
+
+    // Command entry — dispatch action, no typewriter
+    if (typeof entry !== "string") {
+      onDemoAction?.(entry);
+      return;
+    }
+
+    // String entry — typewriter fill
     let charIndex = 0;
     fillInput("");
 
     intervalRef.current = setInterval(() => {
       charIndex++;
-      fillInput(message.slice(0, charIndex));
-      if (charIndex >= message.length) {
+      fillInput(entry.slice(0, charIndex));
+      if (charIndex >= entry.length) {
         clearInterval(intervalRef.current!);
         intervalRef.current = null;
       }
     }, CHAR_DELAY_MS);
-
-    setScriptIndex((prev) => ({ ...prev, [activeAgent]: index + 1 }));
-  }, [activeAgent, fillInput]);
+  }, [activeAgent, fillInput, onDemoAction]);
 
   const resetScripts = useCallback(() => {
     if (intervalRef.current !== null) {

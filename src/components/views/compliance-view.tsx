@@ -70,7 +70,34 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping, assessment, isGenerating]);
 
-  const userMessageCount = messages.filter((m) => m.role === "user").length;
+  // Step progress based on topics covered in user messages
+  const completedSteps = (() => {
+    const userText = messages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content.toLowerCase())
+      .join(" ");
+    if (!messages.some((m) => m.role === "user")) return 0;
+
+    let steps = 0;
+
+    // Insurance: Canadian ownership, PBN, insurance, bonding mentioned
+    if (/\b(canadian|insur|liabil|pbn|procurement business|bonding|bond)\b/.test(userText))
+      steps = 1;
+
+    // Certifications: security clearance, ISO, WSIB, certs mentioned
+    if (steps >= 1 && /\b(clearance|secret|iso|wsib|certif|designated)\b/.test(userText))
+      steps = 2;
+
+    // Requirements: subcontracting, SA holder, supply arrangement
+    if (steps >= 2 && /\b(subcontract|sa holder|supply arrangement|proservices?|standing offer)\b/.test(userText))
+      steps = 3;
+
+    // Review: user confirmed for assessment
+    if (steps >= 3 && /\b(yes.*accurate|run.*assessment|looks?\s*good|that'?s?\s*correct|please\s*run)\b/.test(userText))
+      steps = 4;
+
+    return steps;
+  })();
 
   const runComplianceAssessment = useCallback(
     async (conversation: ChatMessage[]) => {
@@ -133,12 +160,11 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
 
         const reader = res.body!.getReader();
 
-        // Add placeholder assistant message for streaming
+        // Add placeholder assistant message for streaming — keep isTyping true so cursor shows
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: "", timestamp: Date.now() },
         ]);
-        setIsTyping(false);
 
         const fullText = await consumeSSEStream(reader, (accumulated) => {
           setMessages((prev) => {
@@ -150,6 +176,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
             return msgs;
           });
         });
+        setIsTyping(false);
 
         // Check if the agent's response signals the interview is complete
         // by including the COMPLIANCE_READY marker
@@ -237,8 +264,8 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
           {!assessment && (
             <div className="flex items-center gap-3">
               {["Insurance", "Certifications", "Requirements", "Review"].map((label, i) => {
-                const isDone = i < userMessageCount;
-                const isCurrent = i === userMessageCount;
+                const isDone = i < completedSteps;
+                const isCurrent = i === completedSteps;
                 return (
                   <div key={label} className="flex items-center gap-2 flex-1">
                     <div
@@ -319,7 +346,10 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
                       className="text-[15px]"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      <MarkdownMessage content={msg.content} />
+                      <MarkdownMessage
+                        content={msg.content}
+                        isStreaming={isTyping && i === messages.length - 1}
+                      />
                     </div>
                   </div>
                 </div>
@@ -346,8 +376,8 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
             </div>
           ))}
 
-          {/* Typing indicator */}
-          {isTyping && (
+          {/* Typing indicator — only show before first token arrives */}
+          {isTyping && (!messages.length || messages[messages.length - 1].role !== "assistant" || !messages[messages.length - 1].content) && (
             <div className="flex justify-start">
               <div className="flex gap-4">
                 <div

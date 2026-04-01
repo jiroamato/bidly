@@ -113,6 +113,7 @@ export interface BidDraft {
     project_mgmt?: string;
     safety?: string;
     pricing?: string;
+    forms?: string;
   };
   status: "draft" | "complete";
   created_at: string;

@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ChatPanel } from "@/components/chat-panel";
+import { MarkdownMessage } from "@/components/markdown-message";
 import { AgentState } from "@/hooks/use-agent";
 
 interface WriterViewProps {
   agent: AgentState;
   externalValue?: string;
+  externalActiveSection?: SectionId;
 }
 
 type SectionId = "exec_summary" | "technical" | "team" | "project_mgmt" | "safety" | "pricing" | "forms" | "preview";
@@ -47,7 +49,25 @@ function getSectionStatus(sectionId: string, draftSections: Record<string, strin
   return "draft";
 }
 
-function BidPreview({ draftSections }: { draftSections: Record<string, string> }) {
+interface BidPreviewProps {
+  draftSections: Record<string, string>;
+  companyName?: string;
+  tenderTitle?: string;
+  tenderReference?: string;
+  closingDate?: string;
+}
+
+const PAGE_STYLE = {
+  width: 816,
+  minHeight: 1056,
+  background: "#fff",
+  boxShadow: "0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+  fontFamily: "'Times New Roman', 'Georgia', serif",
+  color: "#1a1a1a",
+  position: "relative" as const,
+};
+
+function BidPreview({ draftSections, companyName, tenderTitle, tenderReference, closingDate }: BidPreviewProps) {
   const hasContent = Object.values(draftSections).some((v) => v && v.trim().length > 0);
 
   if (!hasContent) {
@@ -68,47 +88,100 @@ function BidPreview({ draftSections }: { draftSections: Record<string, string> }
     );
   }
 
+  const today = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: "#e5e7eb" }}>
-      <div className="py-8 px-6 flex justify-center">
-        <div
-          style={{
-            width: 816,
-            minHeight: 1056,
-            background: "#fff",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
-            fontFamily: "'Times New Roman', 'Georgia', serif",
-            color: "#1a1a1a",
-            position: "relative",
-            padding: "72px 72px 48px 72px",
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <div style={{ fontSize: 14, letterSpacing: "4px", textTransform: "uppercase", color: "#888", fontFamily: "Arial, sans-serif", marginBottom: 16 }}>
-              BID PROPOSAL DRAFT
+      <div className="py-8 px-6 flex flex-col items-center gap-8">
+        {/* Cover Page */}
+        <div style={{ ...PAGE_STYLE, padding: 0, display: "flex", flexDirection: "column" }}>
+          {/* Top accent bar */}
+          <div style={{ height: 6, background: "#1a1a1a" }} />
+
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "72px 72px 48px 72px" }}>
+            {/* Document type */}
+            <div style={{ fontSize: 12, letterSpacing: "6px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 32 }}>
+              Bid Proposal
+            </div>
+
+            {/* Tender title */}
+            <h1 style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.3, marginBottom: 24, maxWidth: 560 }}>
+              {tenderTitle || "Government Tender"}
+            </h1>
+
+            {/* Reference number */}
+            {tenderReference && (
+              <div style={{ fontSize: 13, color: "#666", fontFamily: "Arial, sans-serif", marginBottom: 48 }}>
+                Reference: {tenderReference}
+              </div>
+            )}
+
+            {/* Divider */}
+            <div style={{ width: 64, height: 2, background: "#1a1a1a", marginBottom: 48 }} />
+
+            {/* Submitted by */}
+            <div style={{ fontSize: 11, letterSpacing: "3px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 8 }}>
+              Submitted By
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 32 }}>
+              {companyName || "Company Name"}
+            </div>
+
+            {/* Date info */}
+            <div style={{ display: "flex", gap: 48 }}>
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 4 }}>
+                  Date Submitted
+                </div>
+                <div style={{ fontSize: 14, fontFamily: "Arial, sans-serif" }}>{today}</div>
+              </div>
+              {closingDate && (
+                <div>
+                  <div style={{ fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 4 }}>
+                    Closing Date
+                  </div>
+                  <div style={{ fontSize: 14, fontFamily: "Arial, sans-serif" }}>
+                    {new Date(closingDate).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {SECTION_DEFS.filter((s) => s.id !== "preview" && draftSections[s.id]).map((section, idx) => (
-            <div key={section.id} style={{ marginBottom: 36 }}>
-              <div style={{ fontSize: 10, color: "#aaa", fontFamily: "Arial, sans-serif", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 4 }}>
-                Section {idx + 1}
-              </div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, paddingBottom: 8, borderBottom: "1px solid #ddd" }}>
-                {section.label}
-              </h2>
-              <div style={{ fontSize: 13, lineHeight: 1.9, textAlign: "justify", whiteSpace: "pre-wrap" }}>
-                {draftSections[section.id]}
-              </div>
+          {/* Bottom accent bar */}
+          <div style={{ height: 3, background: "#e5e7eb" }} />
+          <div style={{ padding: "16px 72px", borderTop: "1px solid #f0f0f0" }}>
+            <div style={{ fontSize: 9, color: "#bbb", fontFamily: "Arial, sans-serif", letterSpacing: "1px", textTransform: "uppercase" }}>
+              Confidential — For Evaluation Purposes Only
             </div>
-          ))}
+          </div>
         </div>
+
+        {/* Content Pages — one page per section */}
+        {SECTION_DEFS.filter((s) => s.id !== "preview" && draftSections[s.id]).map((section, idx) => (
+          <div key={section.id} style={{ ...PAGE_STYLE, padding: "72px 72px 48px 72px" }}>
+            <div style={{ fontSize: 10, color: "#aaa", fontFamily: "Arial, sans-serif", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 4 }}>
+              Section {idx + 1}
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, paddingBottom: 8, borderBottom: "1px solid #ddd" }}>
+              {section.label}
+            </h2>
+            <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+              <MarkdownMessage content={draftSections[section.id]} />
+            </div>
+            {/* Page footer */}
+            <div style={{ position: "absolute", bottom: 24, left: 72, right: 72, display: "flex", justifyContent: "space-between", fontSize: 9, color: "#bbb", fontFamily: "Arial, sans-serif" }}>
+              <span>{companyName || "Company Name"}</span>
+              <span>Page {idx + 2}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-export function WriterView({ agent, externalValue }: WriterViewProps) {
+export function WriterView({ agent, externalValue, externalActiveSection }: WriterViewProps) {
   const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
   const [draftSections, setDraftSections] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -118,6 +191,25 @@ export function WriterView({ agent, externalValue }: WriterViewProps) {
 
   const profileId = agent.profile?.id;
   const tenderId = agent.selectedTender?.id;
+
+  // Override active section from external source (e.g., demo script)
+  useEffect(() => {
+    if (externalActiveSection) {
+      setActiveSection(externalActiveSection);
+    }
+  }, [externalActiveSection]);
+
+  const refreshDrafts = useCallback(() => {
+    if (!profileId || !tenderId) return;
+    fetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.sections) {
+          setDraftSections(data.sections);
+        }
+      })
+      .catch((err) => { if (process.env.NODE_ENV !== 'production') console.warn('Failed to fetch drafts:', err); });
+  }, [profileId, tenderId]);
 
   // Fetch existing drafts on mount
   useEffect(() => {
@@ -227,7 +319,13 @@ export function WriterView({ agent, externalValue }: WriterViewProps) {
       {/* Editor / Preview Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {isPreview ? (
-          <BidPreview draftSections={draftSections} />
+          <BidPreview
+            draftSections={draftSections}
+            companyName={agent.profile?.company_name}
+            tenderTitle={agent.selectedTender?.title}
+            tenderReference={agent.selectedTender?.solicitation_number || agent.selectedTender?.reference_number}
+            closingDate={agent.selectedTender?.closing_date}
+          />
         ) : (
           <>
             {/* Toolbar */}
@@ -324,7 +422,7 @@ export function WriterView({ agent, externalValue }: WriterViewProps) {
                     </span>
                   </div>
                   <div
-                    className="border p-5 text-[14px] leading-relaxed whitespace-pre-wrap"
+                    className="border p-5 text-[14px] leading-relaxed"
                     style={{
                       background: "var(--white)",
                       borderColor: "var(--bidly-border)",
@@ -332,7 +430,7 @@ export function WriterView({ agent, externalValue }: WriterViewProps) {
                       minHeight: 80,
                     }}
                   >
-                    {sectionContent}
+                    <MarkdownMessage content={sectionContent} />
                   </div>
                 </div>
               ) : (
@@ -352,7 +450,7 @@ export function WriterView({ agent, externalValue }: WriterViewProps) {
 
             {/* Chat Panel */}
             <div className="flex-shrink-0">
-              <ChatPanel agentId="writer" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} />
+              <ChatPanel agentId="writer" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} onResponseComplete={refreshDrafts} />
             </div>
           </>
         )}

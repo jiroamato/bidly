@@ -92,6 +92,17 @@ export function combineTenderScores(
 
     const matchedTerms = scorer.getMatchedTerms(i, keywords);
 
+    console.log(
+      `[SCORE] "${tender.title?.slice(0, 60)}" → ${matchScore}% | ` +
+      `bm25=${bm25Score}×${weights.bm25}=${Math.round(bm25Score * weights.bm25)} | ` +
+      `cat=${categoryResult.score}×${weights.category}=${Math.round(categoryResult.score * weights.category)} ` +
+      `(NAICS→[${categoryResult.profileCategories?.join(",")}] vs "${tender.procurement_category}") | ` +
+      `syn=${synonymScore}×${weights.synonym}=${Math.round(synonymScore * weights.synonym)} | ` +
+      `loc=${locationResult.score}×${weights.location}=${Math.round(locationResult.score * weights.location)} ` +
+      `(${province} vs [${tender.regions_of_delivery?.join(",")}]) | ` +
+      `matched=[${matchedTerms.join(",")}]`
+    );
+
     return {
       ...tender,
       match_score: matchScore,

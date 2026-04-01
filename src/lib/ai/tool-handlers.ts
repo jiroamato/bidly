@@ -216,7 +216,24 @@ async function saveComplianceResult(input: Record<string, any>): Promise<string>
   return JSON.stringify(data);
 }
 
+// Serialize concurrent saveDraft calls per draft to prevent read-merge-write races
+const draftLocks = new Map<string, Promise<string>>();
+
 async function saveDraft(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id } = input;
+  const key = `${profile_id}:${tender_id}`;
+
+  // Chain behind any in-flight save for the same draft
+  const prev = draftLocks.get(key) ?? Promise.resolve("");
+  const current = prev.then(() => saveDraftInner(input)).finally(() => {
+    // Clean up if we're still the latest in the chain
+    if (draftLocks.get(key) === current) draftLocks.delete(key);
+  });
+  draftLocks.set(key, current);
+  return current;
+}
+
+async function saveDraftInner(input: Record<string, any>): Promise<string> {
   const { profile_id, tender_id, section_type, content } = input;
 
   // Read existing draft to merge sections (upsert would overwrite the entire JSONB)
@@ -243,7 +260,12 @@ async function saveDraft(input: Record<string, any>): Promise<string> {
 }
 
 async function updateProfile(input: Record<string, any>): Promise<string> {
-  const { profile_id, updates } = input;
+  const { profile_id } = input;
+  // AI sometimes sends updates as a JSON string instead of an object
+  let updates = input.updates;
+  if (typeof updates === "string") {
+    try { updates = JSON.parse(updates); } catch { return JSON.stringify({ error: "Invalid updates: not valid JSON" }); }
+  }
 
   // Reject updates to protected fields
   const protectedFields = ["id", "created_at"];
@@ -253,15 +275,47 @@ async function updateProfile(input: Record<string, any>): Promise<string> {
     }
   }
 
+  const cleanedUpdates = stripUnknownColumns(updates, PROFILE_COLUMNS);
+
+  // Try update first (avoid .single() — it throws when 0 rows match)
   const { data, error } = await supabase
     .from("business_profiles")
-    .update(updates)
+    .update(cleanedUpdates)
     .eq("id", profile_id)
+    .select();
+
+  if (!error && data && data.length > 0) return JSON.stringify(data[0]);
+
+  // If profile doesn't exist, try fetching the latest one and updating that
+  const { data: latest } = await supabase
+    .from("business_profiles")
+    .select("id")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (latest && latest.length > 0) {
+    const { data: updated, error: retryError } = await supabase
+      .from("business_profiles")
+      .update(cleanedUpdates)
+      .eq("id", latest[0].id)
+      .select();
+    if (!retryError && updated && updated.length > 0) return JSON.stringify(updated[0]);
+  }
+
+  // No profile exists — create one (use placeholder name if not provided yet)
+  const insertData = { ...cleanedUpdates };
+  if (!insertData.company_name) {
+    insertData.company_name = "New Company";
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("business_profiles")
+    .insert(insertData)
     .select()
     .single();
 
-  if (error) return JSON.stringify({ error: error.message });
-  return JSON.stringify(data);
+  if (insertError) return JSON.stringify({ error: insertError.message });
+  return JSON.stringify(inserted);
 }
 
 async function getMatchContext(input: Record<string, any>): Promise<string> {
@@ -278,8 +332,47 @@ async function getMatchContext(input: Record<string, any>): Promise<string> {
   return JSON.stringify(data);
 }
 
+// Valid columns in the business_profiles table
+const PROFILE_COLUMNS = new Set([
+  "id", "company_name", "naics_codes", "location", "province", "capabilities",
+  "keywords", "keyword_synonyms", "embedding", "insurance_amount", "bonding_limit",
+  "certifications", "years_in_business", "past_gov_experience", "pbn",
+  "is_canadian", "security_clearance", "project_size_min", "project_size_max",
+]);
+
+/**
+ * Normalize NAICS codes — the AI sometimes sends objects like
+ * {code: "541510", description: "..."} instead of plain "541510".
+ */
+function normalizeNaicsCodes(codes: any[]): string[] {
+  return codes.map((c) => {
+    if (typeof c === "string") return c;
+    if (typeof c === "object" && c?.code) return String(c.code);
+    return String(c);
+  });
+}
+
+function stripUnknownColumns(data: Record<string, any>, validColumns: Set<string>): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (validColumns.has(key)) {
+      // Normalize NAICS codes to plain strings
+      if (key === "naics_codes" && Array.isArray(value)) {
+        cleaned[key] = normalizeNaicsCodes(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
+
 async function saveProgress(input: Record<string, any>): Promise<string> {
-  const { type, data } = input;
+  const { type } = input;
+  let data = input.data;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch { return JSON.stringify({ error: "Invalid data: not valid JSON" }); }
+  }
   const tableMap: Record<string, string> = {
     profile: "business_profiles",
     eligibility: "eligibility_checks",
@@ -291,9 +384,10 @@ async function saveProgress(input: Record<string, any>): Promise<string> {
   if (!table) return JSON.stringify({ error: `Unknown save type: ${type}` });
 
   if (type === "profile") {
+    const cleanedData = stripUnknownColumns(data, PROFILE_COLUMNS);
     const { data: result, error } = await supabase
       .from(table)
-      .upsert(data)
+      .upsert(cleanedData)
       .select()
       .single();
     if (error) return JSON.stringify({ error: error.message });
