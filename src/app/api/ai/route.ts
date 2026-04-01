@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
           // First call: use .stream() so we can pipe text tokens immediately
           // if no tool use is needed
           const initialStream = anthropic.messages.stream({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-4-6",
             max_tokens: 4096,
             system: systemPrompt,
             tools: tools.length > 0 ? tools : undefined,
@@ -106,6 +106,8 @@ export async function POST(request: NextRequest) {
           // look that up for you"). That's fine to show.
           hasToolUse = true;
 
+          const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
           // Enter tool-use loop with .create() for remaining iterations
           let response = finalMessage;
           loopMessages = [
@@ -155,14 +157,30 @@ export async function POST(request: NextRequest) {
               { role: "user" as const, content: toolResults },
             ];
 
-            // Use .create() to check if more tools are needed
+            // Get next response — check if more tools are needed
             response = await anthropic.messages.create({
-              model: "claude-sonnet-4-20250514",
+              model: "claude-sonnet-4-6",
               max_tokens: 4096,
               system: systemPrompt,
               tools,
               messages: loopMessages,
             });
+
+            // Stream any text blocks from this iteration immediately
+            // so the user sees progress during the tool loop
+            const iterTextBlocks = response.content
+              .filter((b): b is Anthropic.TextBlock => b.type === "text")
+              .map((b) => b.text);
+            for (const text of iterTextBlocks) {
+              const chunkSize = 15;
+              for (let i = 0; i < text.length; i += chunkSize) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ text: text.slice(i, i + chunkSize) })}\n\n`)
+                );
+                await delay(10);
+              }
+              bufferedTokens.push(text);
+            }
 
             if (response.stop_reason === "tool_use") {
               // More tools — add to loop messages and continue
@@ -179,7 +197,6 @@ export async function POST(request: NextRequest) {
             .filter((b): b is Anthropic.TextBlock => b.type === "text")
             .map((b) => b.text);
 
-          const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
           for (const text of textBlocks) {
             // ~15 chars per chunk at 10ms delay ≈ real streaming speed
             const chunkSize = 15;
@@ -289,7 +306,7 @@ async function forceSaveDraftIfNeeded(
       );
 
       response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1024,
         system: systemPrompt,
         tools,
