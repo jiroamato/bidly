@@ -255,6 +255,7 @@ async function updateProfile(input: Record<string, any>): Promise<string> {
 
   const cleanedUpdates = stripUnknownColumns(updates, PROFILE_COLUMNS);
 
+  // Try update first
   const { data, error } = await supabase
     .from("business_profiles")
     .update(cleanedUpdates)
@@ -262,8 +263,28 @@ async function updateProfile(input: Record<string, any>): Promise<string> {
     .select()
     .single();
 
-  if (error) return JSON.stringify({ error: error.message });
-  return JSON.stringify(data);
+  if (!error) return JSON.stringify(data);
+
+  // If profile doesn't exist yet, try fetching the latest one and updating that
+  const { data: latest } = await supabase
+    .from("business_profiles")
+    .select("id")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (latest?.id) {
+    const { data: updated, error: retryError } = await supabase
+      .from("business_profiles")
+      .update(cleanedUpdates)
+      .eq("id", latest.id)
+      .select()
+      .single();
+    if (!retryError) return JSON.stringify(updated);
+    return JSON.stringify({ error: retryError.message });
+  }
+
+  return JSON.stringify({ error: error.message });
 }
 
 async function getMatchContext(input: Record<string, any>): Promise<string> {
