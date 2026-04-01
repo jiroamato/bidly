@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
           // First call: use .stream() so we can pipe text tokens immediately
           // if no tool use is needed
           const initialStream = anthropic.messages.stream({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-4-6",
             max_tokens: 4096,
             system: systemPrompt,
             tools: tools.length > 0 ? tools : undefined,
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
             // if we can detect it's the final iteration. Since we can't
             // predict that, use .create() for tool iterations.
             response = await anthropic.messages.create({
-              model: "claude-sonnet-4-20250514",
+              model: "claude-sonnet-4-6",
               max_tokens: 4096,
               system: systemPrompt,
               tools,
