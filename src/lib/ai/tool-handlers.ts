@@ -243,7 +243,12 @@ async function saveDraft(input: Record<string, any>): Promise<string> {
 }
 
 async function updateProfile(input: Record<string, any>): Promise<string> {
-  const { profile_id, updates } = input;
+  const { profile_id } = input;
+  // AI sometimes sends updates as a JSON string instead of an object
+  let updates = input.updates;
+  if (typeof updates === "string") {
+    try { updates = JSON.parse(updates); } catch { return JSON.stringify({ error: "Invalid updates: not valid JSON" }); }
+  }
 
   // Reject updates to protected fields
   const protectedFields = ["id", "created_at"];
