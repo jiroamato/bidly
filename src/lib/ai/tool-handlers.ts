@@ -342,7 +342,11 @@ function stripUnknownColumns(data: Record<string, any>, validColumns: Set<string
 }
 
 async function saveProgress(input: Record<string, any>): Promise<string> {
-  const { type, data } = input;
+  const { type } = input;
+  let data = input.data;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch { return JSON.stringify({ error: "Invalid data: not valid JSON" }); }
+  }
   const tableMap: Record<string, string> = {
     profile: "business_profiles",
     eligibility: "eligibility_checks",
