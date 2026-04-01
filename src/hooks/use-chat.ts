@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { AgentId, ChatMessage } from "@/lib/types";
 
-export function useChat(agentId: AgentId, profileId?: number, tenderId?: number) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function useChat(
+  agentId: AgentId,
+  profileId?: number,
+  tenderId?: number,
+  externalMessages?: ChatMessage[],
+  setExternalMessages?: Dispatch<SetStateAction<ChatMessage[]>>,
+) {
+  const [internalMessages, setInternalMessages] = useState<ChatMessage[]>([]);
+  const messages = externalMessages ?? internalMessages;
+  const setMessages = setExternalMessages ?? setInternalMessages;
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
