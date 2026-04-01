@@ -5,6 +5,40 @@ import { createServerClient } from "@/lib/supabase";
 
 const anthropic = new Anthropic();
 
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const profileId = searchParams.get("profile_id");
+  const tenderId = searchParams.get("tender_id");
+
+  if (!profileId || !tenderId) {
+    return NextResponse.json(
+      { error: "profile_id and tender_id are required" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const supabase = createServerClient();
+    const { data, error } = await supabase
+      .from("tender_analyses")
+      .select("analysis")
+      .eq("profile_id", profileId)
+      .eq("tender_id", tenderId)
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ analysis: data.analysis });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Lookup failed" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { tender, profileId } = (await request.json()) as {
