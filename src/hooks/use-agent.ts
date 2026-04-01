@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { AgentId, AgentStatus, BusinessProfile, Tender } from "@/lib/types";
+import { AgentId, AgentStatus, BusinessProfile, Tender, TenderWithScore, TenderAnalysisData } from "@/lib/types";
 import { AGENT_ORDER } from "@/lib/agents";
 
 export interface AgentState {
@@ -11,10 +11,14 @@ export interface AgentState {
   profileId: number | null;
   selectedTender: Tender | null;
   tenderId: number | null;
+  matchedTenders: TenderWithScore[];
+  tenderAnalysis: TenderAnalysisData | null;
   setActiveAgent: (id: AgentId) => void;
   completeAgent: (id: AgentId) => void;
   setProfile: (p: BusinessProfile) => void;
   setSelectedTender: (t: Tender) => void;
+  setMatchedTenders: (tenders: TenderWithScore[]) => void;
+  setTenderAnalysis: (analysis: TenderAnalysisData | null) => void;
   resetDemo: () => void;
 }
 
@@ -33,6 +37,8 @@ export function useAgent(): AgentState {
   statusesRef.current = statuses;
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
+  const [matchedTenders, setMatchedTendersRaw] = useState<TenderWithScore[]>([]);
+  const [tenderAnalysis, setTenderAnalysisRaw] = useState<TenderAnalysisData | null>(null);
 
   // Derived IDs for passing to API calls
   const profileId = profile?.id ?? null;
@@ -68,11 +74,23 @@ export function useAgent(): AgentState {
     });
   }, []);
 
+  const setProfileWithClear = useCallback((p: BusinessProfile) => {
+    setProfile(p);
+    setMatchedTendersRaw([]);
+  }, []);
+
+  const setSelectedTenderWithClear = useCallback((t: Tender) => {
+    setSelectedTender(t);
+    setTenderAnalysisRaw(null);
+  }, []);
+
   const resetDemo = useCallback(() => {
     setActiveAgentRaw("profile");
     setStatuses({ ...INITIAL_STATUSES });
     setProfile(null);
     setSelectedTender(null);
+    setMatchedTendersRaw([]);
+    setTenderAnalysisRaw(null);
   }, []);
 
   return {
@@ -82,10 +100,14 @@ export function useAgent(): AgentState {
     profileId,
     selectedTender,
     tenderId,
+    matchedTenders,
+    tenderAnalysis,
     setActiveAgent,
     completeAgent,
-    setProfile,
-    setSelectedTender,
+    setProfile: setProfileWithClear,
+    setSelectedTender: setSelectedTenderWithClear,
+    setMatchedTenders: setMatchedTendersRaw,
+    setTenderAnalysis: setTenderAnalysisRaw,
     resetDemo,
   };
 }
