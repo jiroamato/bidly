@@ -16,12 +16,14 @@ export function ChatInput({ agentId, onSend, disabled, externalValue }: ChatInpu
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const agent = getAgent(agentId);
 
-  useEffect(() => {
-    if (externalValue !== undefined) {
+  // Sync external value during render (not useEffect) to avoid extra render cycles
+  const prevExternalRef = useRef(externalValue);
+  if (externalValue !== prevExternalRef.current) {
+    prevExternalRef.current = externalValue;
+    if (externalValue !== undefined && externalValue !== value) {
       setValue(externalValue);
-      textareaRef.current?.focus();
     }
-  }, [externalValue]);
+  }
 
   useEffect(() => {
     const el = textareaRef.current;
