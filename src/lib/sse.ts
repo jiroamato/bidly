@@ -1,7 +1,6 @@
 /**
  * Consume an SSE stream, calling onChunk for each parsed text chunk.
- * Updates are batched to requestAnimationFrame (~60fps) so the UI
- * doesn't re-render on every single token.
+ * Uses requestAnimationFrame to batch updates for smooth rendering.
  * Returns the fully accumulated text.
  */
 export async function consumeSSEStream(
@@ -12,16 +11,12 @@ export async function consumeSSEStream(
   let buffer = "";
   let fullText = "";
   let done = false;
-  let rafPending = false;
+  let rafScheduled = false;
 
-  function scheduleFlush() {
-    if (rafPending) return;
-    rafPending = true;
-    requestAnimationFrame(() => {
-      rafPending = false;
-      onChunk(fullText);
-    });
-  }
+  const flush = () => {
+    rafScheduled = false;
+    onChunk(fullText);
+  };
 
   while (!done) {
     const result = await reader.read();
@@ -42,7 +37,10 @@ export async function consumeSSEStream(
           const parsed = JSON.parse(data);
           if (parsed.text) {
             fullText += parsed.text;
-            scheduleFlush();
+            if (!rafScheduled) {
+              rafScheduled = true;
+              requestAnimationFrame(flush);
+            }
           }
         } catch {
           // skip malformed chunks
@@ -51,7 +49,7 @@ export async function consumeSSEStream(
     }
   }
 
-  // Final flush to ensure last tokens are rendered
+  // Final flush to ensure all text is rendered
   onChunk(fullText);
   return fullText;
 }
