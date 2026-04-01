@@ -292,7 +292,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
         tender_id: { type: "number" },
         section_type: {
           type: "string",
-          enum: ["exec_summary", "technical", "team", "project_mgmt", "safety", "pricing"],
+          enum: ["exec_summary", "technical", "team", "project_mgmt", "safety", "pricing", "forms"],
           description: "Which section to save",
         },
         content: { type: "string", description: "The draft content" },
@@ -323,7 +323,7 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       properties: {
         section_type: {
           type: "string",
-          enum: ["exec_summary", "technical", "team", "project_mgmt", "safety", "pricing"],
+          enum: ["exec_summary", "technical", "team", "project_mgmt", "safety", "pricing", "forms"],
         },
         tender_id: { type: "number" },
         profile_id: { type: "number" },

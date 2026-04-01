@@ -97,9 +97,8 @@ Sections to support (in order):
 3. Team & Experience
 4. Project Management Plan
 5. Safety Plan
-6. Quality Assurance
-7. Subcontracting Plan (if applicable)
-8. Pricing Schedule
+6. Pricing Schedule
+7. Form Guidance — explain required forms, what to fill in, and common pitfalls
 
 Before drafting, review the tender requirements and recommend which sections to include. Suggest skipping sections that aren't relevant to this tender.
 
