@@ -216,7 +216,24 @@ async function saveComplianceResult(input: Record<string, any>): Promise<string>
   return JSON.stringify(data);
 }
 
+// Serialize concurrent saveDraft calls per draft to prevent read-merge-write races
+const draftLocks = new Map<string, Promise<string>>();
+
 async function saveDraft(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id } = input;
+  const key = `${profile_id}:${tender_id}`;
+
+  // Chain behind any in-flight save for the same draft
+  const prev = draftLocks.get(key) ?? Promise.resolve("");
+  const current = prev.then(() => saveDraftInner(input)).finally(() => {
+    // Clean up if we're still the latest in the chain
+    if (draftLocks.get(key) === current) draftLocks.delete(key);
+  });
+  draftLocks.set(key, current);
+  return current;
+}
+
+async function saveDraftInner(input: Record<string, any>): Promise<string> {
   const { profile_id, tender_id, section_type, content } = input;
 
   // Read existing draft to merge sections (upsert would overwrite the entire JSONB)
