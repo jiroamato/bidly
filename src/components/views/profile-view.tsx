@@ -397,7 +397,8 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   messagesRef.current = messages;
 
   // If agent already has a profile (returning user), show summary immediately
-  const hasExistingProfile = agent.profile !== null && !editMode;
+  // Require a non-empty company_name so the empty seed row doesn't trigger the card
+  const hasExistingProfile = agent.profile !== null && !!agent.profile.company_name && !editMode;
   console.log("[ProfileView] render", {
     hasExistingProfile,
     editMode,
