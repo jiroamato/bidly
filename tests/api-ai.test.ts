@@ -135,9 +135,9 @@ describe("POST /api/ai", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("uses .stream() for initial call then .create() for tool loop", async () => {
+  it("uses .stream() for both initial call and tool loop iterations", async () => {
     // Initial .stream() returns tool_use
-    mockStream.mockReturnValue({
+    mockStream.mockReturnValueOnce({
       [Symbol.asyncIterator]: async function* () {
         yield { type: "content_block_delta", delta: { type: "text_delta", text: "Let me check." } };
         yield { type: "message_stop" };
@@ -151,10 +151,16 @@ describe("POST /api/ai", () => {
       }),
     });
 
-    // .create() in tool loop returns final text
-    mockCreate.mockResolvedValueOnce({
-      stop_reason: "end_turn",
-      content: [{ type: "text", text: "Here are the results." }],
+    // Second .stream() in tool loop returns final text
+    mockStream.mockReturnValueOnce({
+      [Symbol.asyncIterator]: async function* () {
+        yield { type: "content_block_delta", delta: { type: "text_delta", text: "Here are the results." } };
+        yield { type: "message_stop" };
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Here are the results." }],
+      }),
     });
 
     mockHandleToolCall.mockResolvedValue("tool result data");
@@ -170,17 +176,17 @@ describe("POST /api/ai", () => {
     expect(res.status).toBe(200);
 
     const { text } = await collectSSE(res);
-    // Should contain initial streamed text + final tool loop text
+    // Should contain initial streamed text + tool loop streamed text
     expect(text).toContain("Let me check.");
     expect(text).toContain("Here are the results.");
 
-    // .stream() called once for initial, .create() once for tool loop
-    expect(mockStream).toHaveBeenCalledTimes(1);
-    expect(mockCreate).toHaveBeenCalledTimes(1);
+    // .stream() called twice — once for initial, once for tool loop
+    expect(mockStream).toHaveBeenCalledTimes(2);
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it("returns error event when max tool iterations exceeded", async () => {
-    // Initial stream returns tool_use
+    // Every .stream() returns tool_use to trigger the limit
     mockStream.mockReturnValue({
       [Symbol.asyncIterator]: async function* () {
         yield { type: "message_stop" };
@@ -193,13 +199,6 @@ describe("POST /api/ai", () => {
       }),
     });
 
-    // Every .create() returns tool_use to trigger the limit
-    mockCreate.mockResolvedValue({
-      stop_reason: "tool_use",
-      content: [
-        { type: "tool_use", id: "tool_1", name: "search_tenders", input: { query: "test" } },
-      ],
-    });
     mockHandleToolCall.mockResolvedValue("result");
 
     const res = await POST(

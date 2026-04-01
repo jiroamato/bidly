@@ -157,8 +157,8 @@ export async function POST(request: NextRequest) {
               { role: "user" as const, content: toolResults },
             ];
 
-            // Get next response — check if more tools are needed
-            response = await anthropic.messages.create({
+            // Stream the next response token-by-token
+            const iterStream = anthropic.messages.stream({
               model: "claude-sonnet-4-6",
               max_tokens: 4096,
               system: systemPrompt,
@@ -166,21 +166,20 @@ export async function POST(request: NextRequest) {
               messages: loopMessages,
             });
 
-            // Stream any text blocks from this iteration immediately
-            // so the user sees progress during the tool loop
-            const iterTextBlocks = response.content
-              .filter((b): b is Anthropic.TextBlock => b.type === "text")
-              .map((b) => b.text);
-            for (const text of iterTextBlocks) {
-              const chunkSize = 15;
-              for (let i = 0; i < text.length; i += chunkSize) {
+            // Pipe text tokens to client as they arrive
+            for await (const event of iterStream) {
+              if (
+                event.type === "content_block_delta" &&
+                event.delta.type === "text_delta"
+              ) {
+                bufferedTokens.push(event.delta.text);
                 controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ text: text.slice(i, i + chunkSize) })}\n\n`)
+                  encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
                 );
-                await delay(10);
               }
-              bufferedTokens.push(text);
             }
+
+            response = await iterStream.finalMessage();
 
             if (response.stop_reason === "tool_use") {
               // More tools — add to loop messages and continue
@@ -188,23 +187,6 @@ export async function POST(request: NextRequest) {
                 ...loopMessages,
                 { role: "assistant" as const, content: response.content },
               ];
-            }
-          }
-
-          // Tool loop done — stream the final text with small delays
-          // to simulate real token-by-token streaming.
-          const textBlocks = response.content
-            .filter((b): b is Anthropic.TextBlock => b.type === "text")
-            .map((b) => b.text);
-
-          for (const text of textBlocks) {
-            // ~15 chars per chunk at 10ms delay ≈ real streaming speed
-            const chunkSize = 15;
-            for (let i = 0; i < text.length; i += chunkSize) {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ text: text.slice(i, i + chunkSize) })}\n\n`)
-              );
-              await delay(10);
             }
           }
 
