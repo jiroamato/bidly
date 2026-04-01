@@ -131,11 +131,12 @@ export async function POST(request: NextRequest) {
 
             const toolResults = await Promise.all(
               toolUseBlocks.map(async (block) => {
-                console.log(`[AI] calling tool=${block.name} input=${JSON.stringify(block.input).slice(0, 200)}`);
-                const result = await handleToolCall(
-                  block.name,
-                  block.input as Record<string, any>
-                );
+                // Override IDs so the AI can't send wrong values
+                const input = { ...(block.input as Record<string, any>) };
+                if (profileId && "profile_id" in input) input.profile_id = profileId;
+                if (tenderId && "tender_id" in input) input.tender_id = tenderId;
+                console.log(`[AI] calling tool=${block.name} input=${JSON.stringify(input).slice(0, 200)}`);
+                const result = await handleToolCall(block.name, input);
                 console.log(`[AI] tool=${block.name} result=${result.slice(0, 200)}`);
                 return {
                   type: "tool_result" as const,
@@ -271,11 +272,16 @@ async function forceSaveDraftIfNeeded(
       console.log(`[AI] writer force-save: tools=[${toolBlocks.map(b => b.name).join(", ")}]`);
 
       const results = await Promise.all(
-        toolBlocks.map(async (block) => ({
-          type: "tool_result" as const,
-          tool_use_id: block.id,
-          content: await handleToolCall(block.name, block.input as Record<string, any>),
-        }))
+        toolBlocks.map(async (block) => {
+          const input = { ...(block.input as Record<string, any>) };
+          if ("profile_id" in input) input.profile_id = profileId;
+          if ("tender_id" in input) input.tender_id = tenderId;
+          return {
+            type: "tool_result" as const,
+            tool_use_id: block.id,
+            content: await handleToolCall(block.name, input),
+          };
+        })
       );
 
       response = await anthropic.messages.create({
