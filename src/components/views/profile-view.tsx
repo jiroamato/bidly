@@ -804,7 +804,10 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
                       className="text-[15px]"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      <MarkdownMessage content={msg.content} />
+                      <MarkdownMessage
+                        content={msg.content}
+                        isStreaming={isTyping && i === messages.length - 1}
+                      />
                     </div>
 
                     {/* Province buttons — step 1, hidden if province already mentioned */}

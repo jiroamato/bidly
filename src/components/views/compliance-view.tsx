@@ -319,7 +319,10 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
                       className="text-[15px]"
                       style={{ color: "var(--text-primary)" }}
                     >
-                      <MarkdownMessage content={msg.content} />
+                      <MarkdownMessage
+                        content={msg.content}
+                        isStreaming={isTyping && i === messages.length - 1}
+                      />
                     </div>
                   </div>
                 </div>

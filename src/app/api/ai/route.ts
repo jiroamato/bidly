@@ -157,6 +157,14 @@ export async function POST(request: NextRequest) {
               { role: "user" as const, content: toolResults },
             ];
 
+            // Separate text from previous iteration with a newline
+            if (bufferedTokens.length > 0) {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ text: "\n\n" })}\n\n`)
+              );
+              bufferedTokens.push("\n\n");
+            }
+
             // Stream the next response token-by-token
             const iterStream = anthropic.messages.stream({
               model: "claude-sonnet-4-6",
