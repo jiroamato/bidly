@@ -106,7 +106,7 @@ Before drafting, review the tender requirements and recommend which sections to 
 For each section:
 - Use draftBidSection to generate the content based on profile and tender context
 - Present the draft to the user for review
-- After the user approves (or edits), use saveDraft to persist the section
+- ALWAYS call saveDraft immediately after drafting each section to persist it — do not wait for explicit approval
 
 Use calculatePricing for the pricing schedule with correct GST/HST for the province.
 Use explainForm to help the user understand any required forms.
