@@ -253,9 +253,11 @@ async function updateProfile(input: Record<string, any>): Promise<string> {
     }
   }
 
+  const cleanedUpdates = stripUnknownColumns(updates, PROFILE_COLUMNS);
+
   const { data, error } = await supabase
     .from("business_profiles")
-    .update(updates)
+    .update(cleanedUpdates)
     .eq("id", profile_id)
     .select()
     .single();
@@ -278,6 +280,24 @@ async function getMatchContext(input: Record<string, any>): Promise<string> {
   return JSON.stringify(data);
 }
 
+// Valid columns in the business_profiles table
+const PROFILE_COLUMNS = new Set([
+  "id", "company_name", "naics_codes", "location", "province", "capabilities",
+  "keywords", "keyword_synonyms", "embedding", "insurance_amount", "bonding_limit",
+  "certifications", "years_in_business", "past_gov_experience", "pbn",
+  "is_canadian", "security_clearance", "project_size_min", "project_size_max",
+]);
+
+function stripUnknownColumns(data: Record<string, any>, validColumns: Set<string>): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (validColumns.has(key)) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
 async function saveProgress(input: Record<string, any>): Promise<string> {
   const { type, data } = input;
   const tableMap: Record<string, string> = {
@@ -291,9 +311,10 @@ async function saveProgress(input: Record<string, any>): Promise<string> {
   if (!table) return JSON.stringify({ error: `Unknown save type: ${type}` });
 
   if (type === "profile") {
+    const cleanedData = stripUnknownColumns(data, PROFILE_COLUMNS);
     const { data: result, error } = await supabase
       .from(table)
-      .upsert(data)
+      .upsert(cleanedData)
       .select()
       .single();
     if (error) return JSON.stringify({ error: error.message });
