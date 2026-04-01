@@ -6,6 +6,7 @@ import { ChatMessage } from "@/lib/types";
 import { AgentState } from "@/hooks/use-agent";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { consumeSSEStream } from "@/lib/sse";
+import { useChatHistory } from "@/contexts/chat-history-context";
 
 interface ComplianceViewProps {
   agent: AgentState;
@@ -55,9 +56,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
     ? `I'll check your eligibility for "${tender.title}". I need to verify a few things about your company. Let's start — can you confirm that your company is 100% Canadian-owned and operated?`
     : "I'll help check your eligibility. First, go back and select a tender to assess.";
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: initialMessage, timestamp: Date.now() },
-  ]);
+  const [messages, setMessages] = useChatHistory("compliance");
   const [isTyping, setIsTyping] = useState(false);
   const [assessment, setAssessment] = useState<ComplianceAssessment | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -65,6 +64,13 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  // Seed initial welcome message on first visit (context starts empty)
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([{ role: "assistant", content: initialMessage, timestamp: Date.now() }]);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
