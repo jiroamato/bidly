@@ -16,6 +16,7 @@ interface ChatPanelProps {
   /** @deprecated Use profileId instead. Kept for backward compat with views not yet migrated. */
   profile?: BusinessProfile | null;
   externalValue?: string;
+  onResponseComplete?: () => void;
 }
 
 function MessageCopyButton({ text }: { text: string }) {
@@ -44,12 +45,19 @@ function MessageCopyButton({ text }: { text: string }) {
   );
 }
 
-export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile, externalValue }: ChatPanelProps) {
+export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profile, externalValue, onResponseComplete }: ChatPanelProps) {
   // Derive IDs from objects if the new-style props aren't provided (backward compat)
   const resolvedProfileId = profileId ?? profile?.id;
   const resolvedTenderId = tenderId ?? selectedTender?.id;
 
   const { messages, isLoading, isStreaming, error, sendMessage } = useChat(agentId, resolvedProfileId, resolvedTenderId);
+  const prevIsLoadingRef = useRef(false);
+  useEffect(() => {
+    if (prevIsLoadingRef.current && !isLoading) {
+      onResponseComplete?.();
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading, onResponseComplete]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
