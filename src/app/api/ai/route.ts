@@ -135,6 +135,9 @@ export async function POST(request: NextRequest) {
 
             console.log(`[AI] agent=${agentId} iteration=${iterations} tools=[${toolUseBlocks.map(b => b.name).join(", ")}]`);
 
+            // Tools that can run in the background (fire-and-forget)
+            const BACKGROUND_TOOLS = new Set(["saveProgress", "updateProfile", "saveDraft"]);
+
             const toolResults = await Promise.all(
               toolUseBlocks.map(async (block) => {
                 // Override IDs so the AI can't send wrong values
@@ -142,6 +145,20 @@ export async function POST(request: NextRequest) {
                 if (profileId && "profile_id" in input) input.profile_id = profileId;
                 if (tenderId && "tender_id" in input) input.tender_id = tenderId;
                 console.log(`[AI] calling tool=${block.name} input=${JSON.stringify(input).slice(0, 200)}`);
+
+                // Fire-and-forget for save/update tools — return instant success
+                if (BACKGROUND_TOOLS.has(block.name)) {
+                  handleToolCall(block.name, input).then(
+                    (r) => console.log(`[AI] bg tool=${block.name} result=${r.slice(0, 200)}`),
+                    (e) => console.error(`[AI] bg tool=${block.name} error:`, e)
+                  );
+                  return {
+                    type: "tool_result" as const,
+                    tool_use_id: block.id,
+                    content: JSON.stringify({ status: "saved" }),
+                  };
+                }
+
                 const result = await handleToolCall(block.name, input);
                 console.log(`[AI] tool=${block.name} result=${result.slice(0, 200)}`);
                 return {
