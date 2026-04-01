@@ -380,7 +380,7 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
               opacity: isLoading || !inputValue.trim() ? 0.5 : 1,
             }}
           >
-            Ask
+            Send
           </button>
         </div>
       </div>

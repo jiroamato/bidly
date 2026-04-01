@@ -175,13 +175,13 @@ describe("ChatInput", () => {
     expect(screen.getByText("Profile")).toBeInTheDocument();
   });
 
-  it("shows 'Send' button for profile agent, 'Ask' for others", () => {
+  it("shows 'Send' button for all agents", () => {
     const { unmount } = render(<ChatInput agentId="profile" onSend={() => {}} />);
     expect(screen.getByText("Send")).toBeInTheDocument();
     unmount();
 
     render(<ChatInput agentId="scout" onSend={() => {}} />);
-    expect(screen.getByText("Ask")).toBeInTheDocument();
+    expect(screen.getByText("Send")).toBeInTheDocument();
   });
 
   it("calls onSend with trimmed text on Enter", () => {

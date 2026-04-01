@@ -110,7 +110,7 @@ export function ChatInput({ agentId, onSend, disabled, externalValue }: ChatInpu
             color: "var(--white)",
           }}
         >
-          {agentId === "profile" ? "Send" : "Ask"}
+          Send
         </button>
       </div>
     </div>
