@@ -90,7 +90,12 @@ export async function POST(request: NextRequest) {
             // For writer agent: force saveDraft if it wasn't called
             if (agentId === "writer" && profileId && tenderId) {
               const streamedText = bufferedTokens.join("");
-              await forceSaveDraftIfNeeded(streamedText, loopMessages, systemPrompt, tools, profileId, tenderId);
+              // Include the assistant's response so the follow-up can see what was drafted
+              const messagesWithResponse = [
+                ...loopMessages,
+                { role: "assistant" as const, content: finalMessage.content },
+              ];
+              await forceSaveDraftIfNeeded(streamedText, messagesWithResponse, systemPrompt, tools, profileId, tenderId);
             }
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
             controller.close();
