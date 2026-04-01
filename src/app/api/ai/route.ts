@@ -155,9 +155,7 @@ export async function POST(request: NextRequest) {
               { role: "user" as const, content: toolResults },
             ];
 
-            // For subsequent iterations, use .stream() on the last one
-            // if we can detect it's the final iteration. Since we can't
-            // predict that, use .create() for tool iterations.
+            // Use .create() to check if more tools are needed
             response = await anthropic.messages.create({
               model: "claude-sonnet-4-20250514",
               max_tokens: 4096,
@@ -175,20 +173,21 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Tool loop done — stream the final text response
-          // We already have the response from .create(), but we need to
-          // stream it. Extract text and send as SSE chunks.
+          // Tool loop done — stream the final text with small delays
+          // to simulate real token-by-token streaming.
           const textBlocks = response.content
             .filter((b): b is Anthropic.TextBlock => b.type === "text")
             .map((b) => b.text);
 
+          const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
           for (const text of textBlocks) {
-            // Send in small chunks for smooth streaming feel
-            const chunkSize = 8;
+            // ~15 chars per chunk at 10ms delay ≈ real streaming speed
+            const chunkSize = 15;
             for (let i = 0; i < text.length; i += chunkSize) {
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ text: text.slice(i, i + chunkSize) })}\n\n`)
               );
+              await delay(10);
             }
           }
 
