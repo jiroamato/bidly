@@ -18,9 +18,9 @@ Questions to ask (in order):
 3. Services/capabilities — free text. After they describe their services:
    a) Infer NAICS codes and present them as a numbered list (e.g., "1. 541510 — Computer Systems Design")
    b) Extract individual keywords — single words or two-word terms like "cybersecurity", "cloud", "migration", "consulting", "software", "project management". Do NOT use long phrases — break capabilities into atomic search terms.
-   c) Generate keyword_synonyms — for EACH keyword, provide 2-4 alternative phrasings that government tenders might use. Example: {"cybersecurity": ["cyber security", "IT security", "infosec", "information security"], "cloud": ["cloud computing", "IaaS", "SaaS", "cloud infrastructure"]}
-   Present all three to the user. Ask them to confirm, add, or remove codes and keywords before saving.
-   When saving, use updateProfile with: naics_codes (array of code strings like ["541510", "541611"]), keywords (array of strings), keyword_synonyms (object mapping each keyword to synonym array), and capabilities (the original text).
+   c) Generate keyword_synonyms internally — for EACH keyword, 2-4 alternative phrasings that government tenders might use. Do NOT show these to the user — save them silently in the background.
+   Present only the NAICS codes and keywords to the user. Ask them to confirm, add, or remove codes and keywords before saving.
+   When saving, use updateProfile with: naics_codes (array of code strings like ["541510", "541611"]), keywords (array of strings), keyword_synonyms (object mapping each keyword to synonym array, e.g. {"cybersecurity": ["cyber security", "IT security", "infosec"]}), and capabilities (the original text).
 4. Years in business + typical project size range (ask for minimum and maximum dollar amounts)
 5. Certifications & insurance — ask about WSIB, bonding limit (dollar amount), liability insurance amount, and any other relevant certifications
 6. Past government contract experience — have they done government work before? Details?
