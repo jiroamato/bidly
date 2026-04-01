@@ -18,6 +18,7 @@ describe("DEMO_SCRIPTS", () => {
   it("no message is empty or too short", () => {
     for (const agentId of AGENT_ORDER) {
       for (const msg of DEMO_SCRIPTS[agentId]) {
+        if (typeof msg !== "string") continue;
         expect(msg.trim().length).toBeGreaterThan(10);
       }
     }

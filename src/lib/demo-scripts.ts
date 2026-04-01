@@ -1,6 +1,8 @@
 import type { AgentId } from "./types";
 
-export const DEMO_SCRIPTS: Record<AgentId, string[]> = {
+export type DemoEntry = string | { action: "switch-to-preview" };
+
+export const DEMO_SCRIPTS: Record<AgentId, DemoEntry[]> = {
   profile: [
     "Our company is Northpoint Digital Solutions.",
     "We specialize in professional services for the Government of Canada. Our core capabilities include software maintenance and support, IT systems management and helpdesk support, data processing and analytics, information technology audit services, change management consulting, training and professional development delivery, equipment supply and maintenance, and construction project management. We also provide temporary help services, supply arrangement management, and system replacement project support.",
@@ -29,6 +31,10 @@ export const DEMO_SCRIPTS: Record<AgentId, string[]> = {
     "Yes, that summary is accurate. Please run the assessment.",
   ],
   writer: [
-    "Please draft the bid proposal. Start with the Executive Summary and Technical Approach sections.",
+    "Draft the Executive Summary. Emphasize our 12 years of experience with federal IT projects and our current ProServices standing offer.",
+    "That's good. Now draft the Technical Approach. We plan to use an Agile methodology with 2-week sprints, and we'll leverage our existing Azure Government cloud infrastructure.",
+    "Looks solid. Now draft Team & Experience and Project Management. Our lead PM is Sarah Chen with 15 years of GC project experience and PMP certification. We'll use a dedicated team of 6 — 2 senior developers, 2 intermediate, 1 QA lead, and Sarah as PM.",
+    "Great. Now draft the Safety Plan and Pricing Schedule. For pricing, our blended rate is $165/hour, estimate 2,400 hours over 12 months. Include a 10% contingency line item.",
+    { action: "switch-to-preview" },
   ],
 };
