@@ -260,36 +260,40 @@ async function updateProfile(input: Record<string, any>): Promise<string> {
 
   const cleanedUpdates = stripUnknownColumns(updates, PROFILE_COLUMNS);
 
-  // Try update first
+  // Try update first (avoid .single() — it throws when 0 rows match)
   const { data, error } = await supabase
     .from("business_profiles")
     .update(cleanedUpdates)
     .eq("id", profile_id)
-    .select()
-    .single();
+    .select();
 
-  if (!error) return JSON.stringify(data);
+  if (!error && data && data.length > 0) return JSON.stringify(data[0]);
 
-  // If profile doesn't exist yet, try fetching the latest one and updating that
+  // If profile doesn't exist, try fetching the latest one and updating that
   const { data: latest } = await supabase
     .from("business_profiles")
     .select("id")
     .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
+    .limit(1);
 
-  if (latest?.id) {
+  if (latest && latest.length > 0) {
     const { data: updated, error: retryError } = await supabase
       .from("business_profiles")
       .update(cleanedUpdates)
-      .eq("id", latest.id)
-      .select()
-      .single();
-    if (!retryError) return JSON.stringify(updated);
-    return JSON.stringify({ error: retryError.message });
+      .eq("id", latest[0].id)
+      .select();
+    if (!retryError && updated && updated.length > 0) return JSON.stringify(updated[0]);
   }
 
-  return JSON.stringify({ error: error.message });
+  // No profile exists — insert a new one
+  const { data: inserted, error: insertError } = await supabase
+    .from("business_profiles")
+    .insert(cleanedUpdates)
+    .select()
+    .single();
+
+  if (insertError) return JSON.stringify({ error: insertError.message });
+  return JSON.stringify(inserted);
 }
 
 async function getMatchContext(input: Record<string, any>): Promise<string> {
