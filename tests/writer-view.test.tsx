@@ -19,6 +19,11 @@ vi.mock("@/hooks/use-chat", () => ({
   }),
 }));
 
+// Mock ChatHistoryContext (used by ChatPanel after chat-persistence feature)
+vi.mock("@/contexts/chat-history-context", () => ({
+  useChatHistory: () => [[], vi.fn()],
+}));
+
 describe("WriterView", () => {
   it("does not contain MOCK_CONTENT constant", async () => {
     const fs = await import("fs");

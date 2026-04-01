@@ -16,6 +16,11 @@ vi.mock("@/hooks/use-chat", () => ({
   }),
 }));
 
+// Mock ChatHistoryContext used by ChatPanel and views
+vi.mock("@/contexts/chat-history-context", () => ({
+  useChatHistory: () => [[], vi.fn()],
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;

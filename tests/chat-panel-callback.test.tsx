@@ -20,6 +20,11 @@ vi.mock("@/hooks/use-chat", () => ({
   }),
 }));
 
+// Mock ChatHistoryContext used by ChatPanel
+vi.mock("@/contexts/chat-history-context", () => ({
+  useChatHistory: () => [[], vi.fn()],
+}));
+
 describe("ChatPanel onResponseComplete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
