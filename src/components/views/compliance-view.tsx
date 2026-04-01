@@ -133,12 +133,11 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
 
         const reader = res.body!.getReader();
 
-        // Add placeholder assistant message for streaming
+        // Add placeholder assistant message for streaming — keep isTyping true so cursor shows
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: "", timestamp: Date.now() },
         ]);
-        setIsTyping(false);
 
         const fullText = await consumeSSEStream(reader, (accumulated) => {
           setMessages((prev) => {
@@ -150,6 +149,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
             return msgs;
           });
         });
+        setIsTyping(false);
 
         // Check if the agent's response signals the interview is complete
         // by including the COMPLIANCE_READY marker

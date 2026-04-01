@@ -507,10 +507,9 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
 
         if (!res.ok) throw new Error("AI request failed");
 
-        // Stream the response
+        // Stream the response — keep isTyping true so the cursor shows
         const reader = res.body?.getReader();
 
-        setIsTyping(false);
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: "", timestamp: Date.now() },
@@ -530,6 +529,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
             });
           });
         }
+        setIsTyping(false);
 
         // Check if the assistant's streamed response signals the profile is complete.
         // Profile data was already saved to Supabase via updateProfile tool calls
