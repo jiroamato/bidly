@@ -71,7 +71,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" suppressHydrationWarning>
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         activeAgent={agent.activeAgent}
         statuses={agent.statuses}

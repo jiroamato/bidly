@@ -22,7 +22,6 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
     <aside
       className="w-[220px] flex flex-col flex-shrink-0 border-r"
       style={{ background: "var(--sidebar-bg)", borderColor: "var(--bidly-border)" }}
-      suppressHydrationWarning
     >
       {/* Brand */}
       <div className="px-6 pt-6 pb-8 flex items-center gap-2.5">
