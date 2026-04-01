@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { useAgent } from "@/hooks/use-agent";
 import { useDemoScript } from "@/hooks/use-demo-script";
+import { ChatHistoryProvider, useChatHistoryActions } from "@/contexts/chat-history-context";
 import { Sidebar } from "@/components/sidebar";
 import { MainHeader } from "@/components/main-header";
 import { ProfileView } from "@/components/views/profile-view";
@@ -11,8 +12,9 @@ import { AnalystView } from "@/components/views/analyst-view";
 import { ComplianceView } from "@/components/views/compliance-view";
 import { WriterView } from "@/components/views/writer-view";
 
-export default function Home() {
+function HomeContent() {
   const agent = useAgent();
+  const { clearAllMessages } = useChatHistoryActions();
 
   const [demoInputValue, setDemoInputValue] = useState<string | undefined>(undefined);
   const [writerPreviewSection, setWriterPreviewSection] = useState<"preview" | undefined>(undefined);
@@ -39,10 +41,11 @@ export default function Home() {
       // Server delete failed — still reset client state
     }
     agent.resetDemo();
+    clearAllMessages();
     demoScript.resetScripts();
     setDemoInputValue(undefined);
     setWriterPreviewSection(undefined);
-  }, [agent.resetDemo, demoScript.resetScripts]);
+  }, [agent.resetDemo, clearAllMessages, demoScript.resetScripts]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -82,5 +85,13 @@ export default function Home() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ChatHistoryProvider>
+      <HomeContent />
+    </ChatHistoryProvider>
   );
 }
