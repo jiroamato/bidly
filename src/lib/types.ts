@@ -45,6 +45,15 @@ export interface Tender {
   match_score?: number;
 }
 
+export type TenderWithScore = Tender & {
+  match_score: number;
+  bm25_score: number;
+  category_score: number;
+  synonym_score: number;
+  location_score: number;
+  matched_keywords: string[];
+};
+
 export interface TenderSelection {
   id: number;
   profile_id: number;
