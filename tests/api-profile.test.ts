@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockSingle = vi.fn();
 const mockLimit = vi.fn(() => ({ single: mockSingle }));
 const mockOrder = vi.fn(() => ({ limit: mockLimit }));
-const mockSelect = vi.fn(() => ({ order: mockOrder, single: mockSingle }));
+const mockSelectEq = vi.fn(() => ({ single: mockSingle }));
+const mockSelect = vi.fn(() => ({ order: mockOrder, eq: mockSelectEq, single: mockSingle }));
 const mockInsert = vi.fn(() => ({ select: vi.fn(() => ({ single: mockSingle })) }));
 const mockEq = vi.fn(() => ({ select: vi.fn(() => ({ single: mockSingle })) }));
 const mockUpdate = vi.fn(() => ({ eq: mockEq }));
@@ -29,6 +30,16 @@ function makeRequest(body: unknown): Request {
   });
 }
 
+function makeGetRequest(id?: number) {
+  const url = id
+    ? `http://localhost/api/profile?id=${id}`
+    : "http://localhost/api/profile";
+  const req = new Request(url, { method: "GET" });
+  // Mimic NextRequest.nextUrl for route handler
+  (req as any).nextUrl = new URL(url);
+  return req;
+}
+
 describe("GET /api/profile", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -36,12 +47,24 @@ describe("GET /api/profile", () => {
     const profile = { id: 1, company_name: "Test Co" };
     mockSingle.mockResolvedValue({ data: profile, error: null });
 
-    const res = await GET();
+    const res = await GET(makeGetRequest() as any);
     const json = await res.json();
 
     expect(json).toEqual(profile);
     expect(res.status).toBe(200);
     expect(mockFrom).toHaveBeenCalledWith("business_profiles");
+  });
+
+  it("returns profile by id when query param provided", async () => {
+    const profile = { id: 42, company_name: "Specific Co" };
+    mockSingle.mockResolvedValue({ data: profile, error: null });
+
+    const res = await GET(makeGetRequest(42) as any);
+    const json = await res.json();
+
+    expect(json).toEqual(profile);
+    expect(res.status).toBe(200);
+    expect(mockSelectEq).toHaveBeenCalledWith("id", 42);
   });
 
   it("returns 404 when no profile exists", async () => {
@@ -50,7 +73,7 @@ describe("GET /api/profile", () => {
       error: { message: "No rows found" },
     });
 
-    const res = await GET();
+    const res = await GET(makeGetRequest() as any);
     const json = await res.json();
 
     expect(res.status).toBe(404);
