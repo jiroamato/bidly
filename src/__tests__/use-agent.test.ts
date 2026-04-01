@@ -3,6 +3,13 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { useAgent } from "@/hooks/use-agent";
 
 describe("useAgent hook", () => {
+  it("does NOT fetch /api/profile on mount (no hydration)", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    renderHook(() => useAgent());
+    expect(fetchSpy).not.toHaveBeenCalledWith("/api/profile");
+    fetchSpy.mockRestore();
+  });
+
   it("initializes with profile active, all others locked", () => {
     const { result } = renderHook(() => useAgent());
     expect(result.current.activeAgent).toBe("profile");

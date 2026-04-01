@@ -127,11 +127,13 @@ Match Reasoning: ${m.match_reasoning}`);
 
   if (ctx.analysis?.analysis) {
     const a = ctx.analysis.analysis;
+    const join = (v: unknown, sep: string) =>
+      Array.isArray(v) ? v.join(sep) : typeof v === "string" ? v : "";
     parts.push(`TENDER ANALYSIS:
-Scope: ${(a.whatTheyWant || []).join("; ")}
-Risks: ${(a.risks || []).map((r: any) => `[${r.level}] ${r.text}`).join("; ")}
-Evaluation: ${(a.evaluation || []).map((e: any) => `${e.criteria}: ${e.weight}`).join(", ")}
-Forms Required: ${(a.forms || []).join(", ")}`);
+Scope: ${join(a.whatTheyWant, "; ")}
+Risks: ${Array.isArray(a.risks) ? a.risks.map((r: any) => `[${r.level}] ${r.text}`).join("; ") : a.risks || ""}
+Evaluation: ${Array.isArray(a.evaluation) ? a.evaluation.map((e: any) => `${e.criteria}: ${e.weight}`).join(", ") : a.evaluation || ""}
+Forms Required: ${join(a.forms, ", ")}`);
   }
 
   if (ctx.compliance) {

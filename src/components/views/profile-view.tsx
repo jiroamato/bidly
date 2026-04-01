@@ -397,7 +397,15 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   messagesRef.current = messages;
 
   // If agent already has a profile (returning user), show summary immediately
-  const hasExistingProfile = agent.profile !== null && !editMode;
+  // Require a non-empty company_name so the empty seed row doesn't trigger the card
+  const hasExistingProfile = agent.profile !== null && !!agent.profile.company_name && !editMode;
+  console.log("[ProfileView] render", {
+    hasExistingProfile,
+    editMode,
+    profileId: agent.profile?.id ?? null,
+    companyName: agent.profile?.company_name ?? null,
+    profileStatus: agent.statuses.profile,
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -406,7 +414,11 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   // Create an empty profile row on mount for new users so we have a profile_id
   // for updateProfile tool calls during the conversation
   useEffect(() => {
-    if (agent.profile?.id) return; // already have one
+    if (agent.profile?.id) {
+      console.log("[ProfileView] skipping empty profile creation — already have id:", agent.profile.id);
+      return;
+    }
+    console.log("[ProfileView] creating empty profile row...");
     let cancelled = false;
     (async () => {
       try {
@@ -417,10 +429,11 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         });
         if (res.ok && !cancelled) {
           const saved = await res.json();
+          console.log("[ProfileView] empty profile created:", { id: saved?.id, company_name: saved?.company_name });
           if (saved?.id) agent.setProfile(saved);
         }
-      } catch {
-        // non-critical — extraction fallback still works
+      } catch (err) {
+        console.error("[ProfileView] empty profile creation failed:", err);
       }
     })();
     return () => { cancelled = true; };
@@ -586,10 +599,13 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   );
 
   const finalizeProfile = useCallback(async () => {
-    // Always try fetching from Supabase first — updateProfile tool calls
-    // during the conversation should have already created/updated the row.
+    // Fetch the specific profile we've been updating during the conversation.
+    // Using the known profile id avoids returning the wrong row when multiple
+    // empty seed profiles exist (e.g. React strict mode double-mount).
+    const pid = agent.profile?.id;
+    const url = pid ? `/api/profile?id=${pid}` : "/api/profile";
     try {
-      const res = await fetch("/api/profile");
+      const res = await fetch(url);
       if (res.ok) {
         const profile = await res.json();
         if (profile?.id && profile.company_name) {
