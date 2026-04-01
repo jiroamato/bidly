@@ -66,9 +66,7 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
 
   // Sync external value (e.g. from demo script) into the input field
   useEffect(() => {
-    if (externalValue !== undefined) {
-      setInputValue(externalValue);
-    }
+    setInputValue(externalValue ?? "");
   }, [externalValue]);
 
   // Auto-grow textarea height
