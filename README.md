@@ -175,6 +175,10 @@ This project is built by the following for the Cursor Hackathon (March 22, 2026)
 - William Chong
 - Vy Phan
 
+## Contributing
+
+Interested in contributing? Check out the contributing guidelines [here](./CONTRIBUTING.md). Please note that this project is released with a Code of Conduct. By contributing to this project, you agree to abide by its terms.
+
 ## License
 
 - Copyright © 2026 Claudia Liauw, Jiro Amato, William Chong, Vy Phan
