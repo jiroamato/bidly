@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage } from "@/lib/types";
 import { apiFetch } from "@/lib/api-fetch";
@@ -78,7 +78,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
   }, [messages, isTyping, assessment, isGenerating]);
 
   // Step progress based on topics covered in user messages
-  const completedSteps = (() => {
+  const completedSteps = useMemo(() => {
     const userText = messages
       .filter((m) => m.role === "user")
       .map((m) => m.content.toLowerCase())
@@ -104,7 +104,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
       steps = 4;
 
     return steps;
-  })();
+  }, [messages]);
 
   const runComplianceAssessment = useCallback(
     async (conversation: ChatMessage[]) => {

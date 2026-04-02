@@ -53,14 +53,22 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServerClient();
 
-    // Fetch profile context if profileId is provided
+    // Fetch profile and match context in parallel when profileId is provided
     let profileContext = "";
     if (profileId) {
-      const { data: profile } = await supabase
-        .from("business_profiles")
-        .select("company_name, location, province, capabilities, keywords, insurance_amount, certifications, years_in_business, past_gov_experience")
-        .eq("id", profileId)
-        .single();
+      const [{ data: profile }, { data: matchData }] = await Promise.all([
+        supabase
+          .from("business_profiles")
+          .select("company_name, location, province, capabilities, keywords, insurance_amount, certifications, years_in_business, past_gov_experience")
+          .eq("id", profileId)
+          .single(),
+        supabase
+          .from("tender_selections")
+          .select("match_score, matched_keywords, match_reasoning")
+          .eq("profile_id", profileId)
+          .eq("tender_id", tender.id)
+          .single(),
+      ]);
 
       if (profile) {
         profileContext = `\n\nCOMPANY PROFILE (analyze risks and requirements relative to this bidder):
@@ -73,14 +81,6 @@ Certifications: ${profile.certifications?.join(", ") || "None listed"}
 Years in Business: ${profile.years_in_business || "Unknown"}
 Government Experience: ${profile.past_gov_experience || "None listed"}`;
       }
-
-      // Fetch match context from tender_selections
-      const { data: matchData } = await supabase
-        .from("tender_selections")
-        .select("match_score, matched_keywords, match_reasoning")
-        .eq("profile_id", profileId)
-        .eq("tender_id", tender.id)
-        .single();
 
       if (matchData) {
         profileContext += `\n\nMATCH CONTEXT:

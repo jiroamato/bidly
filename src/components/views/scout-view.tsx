@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Tender, TenderWithScore } from "@/lib/types";
 import { ChatPanel } from "@/components/chat-panel";
 import { apiFetch } from "@/lib/api-fetch";
@@ -54,7 +54,7 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
     loadTenders();
   }, [loadTenders, hasCachedTenders]);
 
-  const filtered = tenders.filter((t) => {
+  const filtered = useMemo(() => tenders.filter((t) => {
     if (activeFilter === "High Match") return t.match_score >= 80;
     if (activeFilter === "Closing Soon") {
       const d = new Date(t.closing_date);
@@ -65,17 +65,20 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
     if (activeFilter === "Ontario") return t.regions_of_opportunity.includes("Ontario");
     if (activeFilter === "Federal") return ["DND", "PSPC", "PWGSC"].some((e) => t.contracting_entity.includes(e));
     return true;
-  });
+  }), [tenders, activeFilter]);
 
-  const highMatch = tenders.filter((t) => t.match_score >= 80).length;
-  const closingSoon = tenders.filter((t) => {
-    const d = new Date(t.closing_date);
-    const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    return diff <= 14;
-  }).length;
-  const avgScore = tenders.length > 0
-    ? Math.round(tenders.reduce((s, t) => s + t.match_score, 0) / tenders.length)
-    : 0;
+  const { highMatch, closingSoon, avgScore } = useMemo(() => {
+    const high = tenders.filter((t) => t.match_score >= 80).length;
+    const closing = tenders.filter((t) => {
+      const d = new Date(t.closing_date);
+      const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+      return diff <= 14;
+    }).length;
+    const avg = tenders.length > 0
+      ? Math.round(tenders.reduce((s, t) => s + t.match_score, 0) / tenders.length)
+      : 0;
+    return { highMatch: high, closingSoon: closing, avgScore: avg };
+  }, [tenders]);
 
   const handleAnalyze = (tender: Tender) => {
     agent.setSelectedTender(tender);
