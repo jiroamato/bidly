@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Tender } from "@/lib/types";
+import { Tender, TenderWithScore } from "@/lib/types";
 import { ChatPanel } from "@/components/chat-panel";
 import { AgentState } from "@/hooks/use-agent";
 
@@ -10,21 +10,13 @@ interface ScoutViewProps {
   externalValue?: string;
 }
 
-type TenderWithScore = Tender & {
-  match_score: number;
-  bm25_score: number;
-  category_score: number;
-  synonym_score: number;
-  location_score: number;
-  matched_keywords: string[];
-};
-
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
 export function ScoutView({ agent, externalValue }: ScoutViewProps) {
   const [activeFilter, setActiveFilter] = useState("All Matches");
-  const [tenders, setTenders] = useState<TenderWithScore[]>([]);
-  const [loading, setLoading] = useState(true);
+  const hasCachedTenders = agent.matchedTenders.length > 0;
+  const [tenders, setTenders] = useState<TenderWithScore[]>(agent.matchedTenders);
+  const [loading, setLoading] = useState(!hasCachedTenders);
 
   const profileId = agent.profile?.id;
 
@@ -48,16 +40,18 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
       }));
       scored.sort((a, b) => b.match_score - a.match_score);
       setTenders(scored);
+      agent.setMatchedTenders(scored);
     } catch (err) {
       console.error("Failed to load tenders:", err);
     } finally {
       setLoading(false);
     }
-  }, [profileId]);
+  }, [profileId, agent.setMatchedTenders]);
 
   useEffect(() => {
+    if (hasCachedTenders) return;
     loadTenders();
-  }, [loadTenders]);
+  }, [loadTenders, hasCachedTenders]);
 
   const filtered = tenders.filter((t) => {
     if (activeFilter === "High Match") return t.match_score >= 80;

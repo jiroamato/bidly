@@ -7,6 +7,11 @@ vi.mock("@/hooks/use-chat", () => ({
   useChat: (...args: any[]) => mockUseChat(...args),
 }));
 
+// Mock ChatHistoryContext used by ChatPanel
+vi.mock("@/contexts/chat-history-context", () => ({
+  useChatHistory: () => [[], vi.fn()],
+}));
+
 vi.mock("@/lib/agents", () => ({
   getAgent: vi.fn().mockReturnValue({
     name: "Profile",

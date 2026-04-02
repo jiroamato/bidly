@@ -3,51 +3,77 @@
 import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/chat-panel";
 import { AgentState } from "@/hooks/use-agent";
+import { TenderAnalysisData } from "@/lib/types";
 
 interface AnalystViewProps {
   agent: AgentState;
   externalValue?: string;
 }
 
-interface TenderAnalysis {
-  whatTheyWant: string[];
-  deadlines: { label: string; value: string; urgent: boolean }[];
-  forms: string[];
-  evaluation: { criteria: string; weight: string }[];
-  risks: { level: "high" | "medium" | "low"; text: string }[];
-}
-
 export function AnalystView({ agent, externalValue }: AnalystViewProps) {
   const tender = agent.selectedTender;
-  const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<TenderAnalysisData | null>(agent.tenderAnalysis);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tender) return;
 
+    // Tier 1: In-memory cache — already set via useState initializer
+    if (agent.tenderAnalysis) return;
+
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setAnalysis(null);
 
-    fetch("/api/analyze-tender", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tender, profileId: agent.profile?.id }),
-    })
+    // Tier 2: Supabase lookup, then Tier 3: AI fallback
+    const profileId = agent.profile?.id;
+
+    const doAiCall = () => {
+      fetch("/api/analyze-tender", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tender, profileId }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          if (!cancelled) {
+            setAnalysis(data.analysis);
+            agent.setTenderAnalysis(data.analysis);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) setError(err.message);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+
+    if (!profileId) {
+      doAiCall();
+      return () => { cancelled = true; };
+    }
+
+    fetch(`/api/analyze-tender?profile_id=${profileId}&tender_id=${tender.id}`)
       .then((res) => {
-        if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
+        if (!res.ok) throw new Error("cache-miss");
         return res.json();
       })
       .then((data) => {
-        if (!cancelled) setAnalysis(data.analysis);
+        if (!cancelled) {
+          setAnalysis(data.analysis);
+          agent.setTenderAnalysis(data.analysis);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        console.warn("Supabase lookup failed, falling back to AI:", err.message);
+        doAiCall();
       });
 
     return () => {
@@ -157,7 +183,10 @@ export function AnalystView({ agent, externalValue }: AnalystViewProps) {
                     if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
                     return res.json();
                   })
-                  .then((data) => setAnalysis(data.analysis))
+                  .then((data) => {
+                    setAnalysis(data.analysis);
+                    agent.setTenderAnalysis(data.analysis);
+                  })
                   .catch((err) => setError(err.message))
                   .finally(() => setLoading(false));
               }}

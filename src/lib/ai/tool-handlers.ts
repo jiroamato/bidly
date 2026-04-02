@@ -116,9 +116,24 @@ async function matchTendersToProfile(input: Record<string, any>): Promise<string
 
   if (tenderError) return JSON.stringify({ error: tenderError.message });
 
-  // Score using shared module
+  // Score using shared module — return top and bottom matches with trimmed fields
   const scored = combineTenderScores(profile, tenders || []);
-  return JSON.stringify(scored);
+  const trimTender = (t: any) => ({
+    id: t.id,
+    title: t.title,
+    reference_number: t.reference_number,
+    closing_date: t.closing_date,
+    status: t.status,
+    procurement_category: t.procurement_category,
+    contracting_entity: t.contracting_entity,
+    regions_of_delivery: t.regions_of_delivery,
+    match_score: t.match_score,
+    matched_keywords: t.matched_keywords,
+    description: t.description?.slice(0, 200),
+  });
+  const top = scored.slice(0, 20).map(trimTender);
+  const bottom = scored.slice(-10).reverse().map(trimTender);
+  return JSON.stringify({ total_scored: scored.length, top_matches: top, lowest_matches: bottom });
 }
 
 async function filterTenders(input: Record<string, any>): Promise<string> {

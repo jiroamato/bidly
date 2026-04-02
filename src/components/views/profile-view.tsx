@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
+import { useChatHistory } from "@/contexts/chat-history-context";
 import { AgentState } from "@/hooks/use-agent";
 import { consumeSSEStream } from "@/lib/sse";
 import { MarkdownMessage } from "@/components/markdown-message";
@@ -383,9 +384,7 @@ function ProfileCard({
 /* ---------- COMPONENT ---------- */
 
 export function ProfileView({ agent, externalValue }: ProfileViewProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: INITIAL_MESSAGE, timestamp: Date.now() },
-  ]);
+  const [messages, setMessages] = useChatHistory("profile");
   const [isTyping, setIsTyping] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -395,6 +394,13 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  // Seed initial welcome message on first visit (context starts empty)
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([{ role: "assistant", content: INITIAL_MESSAGE, timestamp: Date.now() }]);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // If agent already has a profile (returning user), show summary immediately
   // Require a non-empty company_name so the empty seed row doesn't trigger the card
