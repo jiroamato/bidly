@@ -614,7 +614,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
     const pid = agent.profile?.id;
     const url = pid ? `/api/profile?id=${pid}` : "/api/profile";
     try {
-      const res = await fetch(url);
+      const res = await apiFetch(url);
       if (res.ok) {
         const profile = await res.json();
         if (profile?.id && profile.company_name) {
