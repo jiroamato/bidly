@@ -64,7 +64,7 @@ flowchart TD
 
 | Build | URL |
 |-------|-----|
-| Stable (`main`) | [https://bidly.vercel.app](https://bidly.vercel.app) |
+| Stable (`main`) | [https://bidly-demo.vercel.app](https://bidly.vercel.app) |
 
 ## Developer Setup
 
