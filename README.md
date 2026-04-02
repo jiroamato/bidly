@@ -65,7 +65,6 @@ flowchart TD
 | Build | URL |
 |-------|-----|
 | Stable (`main`) | [https://bidly.vercel.app](https://bidly.vercel.app) |
-| Preview (`dev`) | [https://bidly-dev.vercel.app](https://bidly-dev.vercel.app) |
 
 ## Developer Setup
 
@@ -167,6 +166,18 @@ scripts/              — Data pipeline (CSV seeding)
 supabase/migrations/  — Database schema (3 migrations)
 ```
 
-## Team
+## Contributors
 
-Built by **jiroamato**, **claudia-liauw**, **vytphan**, and **will-chh** at a 2026 hackathon.
+This project is built by the following for the Cursor Hackathon (March 22, 2026):
+
+- Claudia Liauw
+- Jiro Amato
+- William Chong
+- Vy Phan
+
+## License
+
+- Copyright © 2026 Claudia Liauw, Jiro Amato, William Chong, Vy Phan
+
+- Free software distributed under the [MIT License](./LICENSE.md).
+- Documentation made available under **Creative Commons By 4.0 - Attribution 4.0 International** ([CC-BY-4.0](./LICENSE.md))
