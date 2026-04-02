@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useAgent } from "@/hooks/use-agent";
 import { useDemoScript } from "@/hooks/use-demo-script";
 import { ChatHistoryProvider, useChatHistoryActions } from "@/contexts/chat-history-context";
@@ -18,6 +18,10 @@ function HomeContent() {
 
   const [demoInputValue, setDemoInputValue] = useState<string | undefined>(undefined);
   const [writerPreviewSection, setWriterPreviewSection] = useState<"preview" | undefined>(undefined);
+  const [autoDemo, setAutoDemo] = useState(false);
+  const autoDemoRef = useRef(autoDemo);
+  autoDemoRef.current = autoDemo;
+
   const fillDemoInput = useCallback((text: string) => {
     setDemoInputValue(text);
   }, []);
@@ -26,12 +30,25 @@ function HomeContent() {
       setWriterPreviewSection("preview");
     }
   }, []);
-  const demoScript = useDemoScript(agent.activeAgent, fillDemoInput, handleDemoAction);
+  const handleTypewriterDone = useCallback(() => {
+    if (autoDemoRef.current) {
+      // Small delay so the input value is synced before submitting
+      setTimeout(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }, 300);
+    }
+  }, []);
+  const demoScript = useDemoScript(agent.activeAgent, fillDemoInput, handleDemoAction, handleTypewriterDone);
 
-  // Clear external value when switching agents
+  // Clear external value when switching agents; auto-advance if auto-demo is on
+  const prevAgentRef = useRef(agent.activeAgent);
   useEffect(() => {
     setDemoInputValue(undefined);
     setWriterPreviewSection(undefined);
+    if (autoDemoRef.current && prevAgentRef.current !== agent.activeAgent && hasMoreScriptsRef.current) {
+      setTimeout(() => advanceScriptRef.current(), 500);
+    }
+    prevAgentRef.current = agent.activeAgent;
   }, [agent.activeAgent]);
 
   const handleDemoReset = useCallback(async () => {
@@ -62,6 +79,32 @@ function HomeContent() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleDemoReset, demoScript.advanceScript]);
 
+  // Auto-demo: advance script after AI response completes
+  const advanceScriptRef = useRef(demoScript.advanceScript);
+  advanceScriptRef.current = demoScript.advanceScript;
+  const hasMoreScriptsRef = useRef(demoScript.hasMoreScripts);
+  hasMoreScriptsRef.current = demoScript.hasMoreScripts;
+
+  // Kick off the first entry when auto-demo is toggled on
+  const prevAutoDemoRef = useRef(false);
+  useEffect(() => {
+    if (autoDemo && !prevAutoDemoRef.current && hasMoreScriptsRef.current) {
+      advanceScriptRef.current();
+    }
+    prevAutoDemoRef.current = autoDemo;
+  }, [autoDemo]);
+
+  useEffect(() => {
+    if (!autoDemo) return;
+    const onResponseComplete = () => {
+      if (autoDemoRef.current && hasMoreScriptsRef.current) {
+        advanceScriptRef.current();
+      }
+    };
+    window.addEventListener("bidly:response-complete", onResponseComplete);
+    return () => window.removeEventListener("bidly:response-complete", onResponseComplete);
+  }, [autoDemo]);
+
   const views = {
     profile: <ProfileView agent={agent} externalValue={demoInputValue} />,
     scout: <ScoutView agent={agent} externalValue={demoInputValue} />,
@@ -79,7 +122,11 @@ function HomeContent() {
         onAgentClick={agent.setActiveAgent}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <MainHeader activeAgent={agent.activeAgent} />
+        <MainHeader
+          activeAgent={agent.activeAgent}
+          autoDemo={autoDemo}
+          onToggleAutoDemo={() => setAutoDemo((prev) => !prev)}
+        />
         <div className="flex-1 flex flex-col min-h-0">
           {views[agent.activeAgent]}
         </div>

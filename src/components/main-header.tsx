@@ -3,9 +3,11 @@ import { getAgent } from "@/lib/agents";
 
 interface MainHeaderProps {
   activeAgent: AgentId;
+  autoDemo?: boolean;
+  onToggleAutoDemo?: () => void;
 }
 
-export function MainHeader({ activeAgent }: MainHeaderProps) {
+export function MainHeader({ activeAgent, autoDemo, onToggleAutoDemo }: MainHeaderProps) {
   const agent = getAgent(activeAgent);
 
   return (
@@ -26,16 +28,31 @@ export function MainHeader({ activeAgent }: MainHeaderProps) {
         </span>
       </div>
       <div
-        className="flex items-center gap-2 text-[12px]"
+        className="flex items-center gap-3 text-[12px]"
         style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}
       >
         <span>Demo Mode</span>
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center text-[12px]"
-          style={{ background: "var(--bidly-border)", color: "var(--text-secondary)" }}
-        >
-          A
-        </div>
+        {onToggleAutoDemo && (
+          <button
+            onClick={onToggleAutoDemo}
+            className="relative w-9 h-5 rounded-full transition-colors"
+            style={{
+              background: autoDemo ? "var(--success)" : "var(--bidly-border)",
+              border: "none",
+              cursor: "pointer",
+            }}
+            aria-label="Toggle demo mode"
+          >
+            <span
+              className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform"
+              style={{
+                background: "var(--white)",
+                transform: autoDemo ? "translateX(16px)" : "translateX(0)",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+              }}
+            />
+          </button>
+        )}
       </div>
     </div>
   );

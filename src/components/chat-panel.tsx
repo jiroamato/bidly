@@ -63,6 +63,7 @@ export function ChatPanel({ agentId, profileId, tenderId, selectedTender, profil
   useEffect(() => {
     if (prevIsLoadingRef.current && !isLoading) {
       onResponseComplete?.();
+      window.dispatchEvent(new CustomEvent("bidly:response-complete"));
     }
     prevIsLoadingRef.current = isLoading;
   }, [isLoading, onResponseComplete]);

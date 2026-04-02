@@ -170,7 +170,8 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
 
         {/* Tender List */}
         <div className="space-y-3">
-          {filtered.map((tender) => {
+          {filtered.map((tender, idx) => {
+            const isTopMatch = idx === 0 && filtered.length > 1 && tender.match_score >= 80;
             const isHigh = tender.match_score >= 80;
             const closingDate = new Date(tender.closing_date);
             const daysLeft = Math.ceil((closingDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -247,12 +248,12 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
                 {/* Action */}
                 <button
                   onClick={() => handleAnalyze(tender)}
-                  className="text-[11px] tracking-[1px] uppercase px-4 py-2 border flex-shrink-0 transition-colors hover:border-[var(--agent-scout)] hover:text-[var(--agent-scout)]"
+                  className={`text-[11px] tracking-[1px] uppercase px-4 py-2 border flex-shrink-0 transition-colors hover:border-[var(--agent-scout)] hover:text-[var(--agent-scout)] ${isTopMatch ? "animate-glow-green" : ""}`}
                   style={{
                     fontFamily: "var(--font-mono)",
-                    borderColor: "var(--bidly-border)",
-                    background: "var(--white)",
-                    color: "var(--text-secondary)",
+                    borderColor: isTopMatch ? "var(--success)" : "var(--bidly-border)",
+                    background: isTopMatch ? "#ecfdf5" : "var(--white)",
+                    color: isTopMatch ? "var(--success)" : "var(--text-secondary)",
                     cursor: "pointer",
                   }}
                 >

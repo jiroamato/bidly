@@ -273,6 +273,26 @@ async function forceSaveDraftIfNeeded(
 
   console.log("[AI] writer: saveDraft not called — forcing follow-up");
 
+  // Sanitize: strip orphaned tool_use blocks from any assistant message
+  // that isn't immediately followed by a user message containing matching tool_results.
+  const sanitized = conversationMessages.map((msg: any, i: number) => {
+    if (msg.role !== "assistant" || !Array.isArray(msg.content)) return msg;
+    const hasToolUse = msg.content.some((b: any) => b.type === "tool_use");
+    if (!hasToolUse) return msg;
+
+    const next = conversationMessages[i + 1];
+    const hasMatchingResults =
+      next?.role === "user" &&
+      Array.isArray(next.content) &&
+      next.content.some((b: any) => b.type === "tool_result");
+
+    if (hasMatchingResults) return msg;
+
+    // No matching tool_results — strip tool_use blocks, keep text
+    const textOnly = msg.content.filter((b: any) => b.type !== "tool_use");
+    return { ...msg, content: textOnly.length > 0 ? textOnly : "..." };
+  });
+
   try {
     const followUp = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -280,7 +300,7 @@ async function forceSaveDraftIfNeeded(
       system: systemPrompt,
       tools,
       messages: [
-        ...conversationMessages,
+        ...sanitized,
         {
           role: "user" as const,
           content: `You just drafted content but did not call saveDraft. Call saveDraft now for each section you drafted above. Use profile_id=${profileId} and tender_id=${tenderId}. Do not output any text — just call the tool(s).`,

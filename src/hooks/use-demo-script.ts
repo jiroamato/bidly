@@ -18,7 +18,8 @@ function makeInitialIndices(): Record<AgentId, number> {
 export function useDemoScript(
   activeAgent: AgentId,
   fillInput: (text: string) => void,
-  onDemoAction?: (command: Exclude<DemoEntry, string>) => void
+  onDemoAction?: (command: Exclude<DemoEntry, string>) => void,
+  onTypewriterDone?: () => void
 ) {
   const [scriptIndex, setScriptIndex] = useState<Record<AgentId, number>>(makeInitialIndices);
   const scriptIndexRef = useRef(scriptIndex);
@@ -26,6 +27,7 @@ export function useDemoScript(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasMoreScripts = scriptIndex[activeAgent] < DEMO_SCRIPTS[activeAgent].length;
+  const advanceRef = useRef<() => void>(() => {});
 
   const advanceScript = useCallback(() => {
     const index = scriptIndexRef.current[activeAgent];
@@ -47,6 +49,11 @@ export function useDemoScript(
     // Command entry — dispatch action, no typewriter
     if (typeof entry !== "string") {
       onDemoAction?.(entry);
+      // Auto-advance to next entry after a command (no chat response expected)
+      const nextIndex = index + 1;
+      if (nextIndex < entries.length) {
+        setTimeout(() => advanceRef.current(), 500);
+      }
       return;
     }
 
@@ -60,9 +67,11 @@ export function useDemoScript(
       if (charIndex >= entry.length) {
         clearInterval(intervalRef.current!);
         intervalRef.current = null;
+        onTypewriterDone?.();
       }
     }, CHAR_DELAY_MS);
-  }, [activeAgent, fillInput, onDemoAction]);
+  }, [activeAgent, fillInput, onDemoAction, onTypewriterDone]);
+  advanceRef.current = advanceScript;
 
   const resetScripts = useCallback(() => {
     if (intervalRef.current !== null) {

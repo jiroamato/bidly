@@ -180,6 +180,19 @@ body {
   50% { opacity: 0; }
 }
 
+@keyframes glowGreen {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(26, 122, 76, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(26, 122, 76, 0.5), 0 0 24px rgba(26, 122, 76, 0.2);
+  }
+}
+
+.animate-glow-green {
+  animation: glowGreen 2s ease-in-out infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -183,6 +183,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
           });
         });
         setIsTyping(false);
+        window.dispatchEvent(new CustomEvent("bidly:response-complete"));
 
         // Check if the agent's response signals the interview is complete
         // by including the COMPLIANCE_READY marker
@@ -200,6 +201,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
         }
       } catch {
         setIsTyping(false);
+        window.dispatchEvent(new CustomEvent("bidly:response-complete"));
         setMessages((prev) => [
           ...prev,
           {

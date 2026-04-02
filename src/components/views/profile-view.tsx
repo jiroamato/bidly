@@ -572,6 +572,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
           });
         }
         setIsTyping(false);
+        window.dispatchEvent(new CustomEvent("bidly:response-complete"));
 
         // Check if the assistant's streamed response signals the profile is complete.
         // Profile data was already saved to Supabase via updateProfile tool calls
@@ -591,6 +592,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
         }
       } catch {
         setIsTyping(false);
+        window.dispatchEvent(new CustomEvent("bidly:response-complete"));
         setMessages((prev) => [
           ...prev,
           {

@@ -5,6 +5,7 @@ export type DemoEntry = string | { action: "switch-to-preview" };
 export const DEMO_SCRIPTS: Record<AgentId, DemoEntry[]> = {
   profile: [
     "Our company is Northpoint Digital Solutions.",
+    "Ontario",
     "We provide IT consulting, systems integration, cybersecurity, cloud infrastructure, software maintenance, helpdesk support, data analytics, IT audit, change management, training delivery, and project management for the federal government.",
     "Yes, those NAICS codes look correct.",
     "We've been in business for 12 years. Our typical project size ranges from $50,000 for smaller consulting engagements up to $2,000,000 for large systems integration projects.",
@@ -13,8 +14,6 @@ export const DEMO_SCRIPTS: Record<AgentId, DemoEntry[]> = {
     "Yes, that looks accurate. Please save the profile.",
   ],
   scout: [
-    "Find us tenders that match our IT consulting and systems integration capabilities, especially anything related to cybersecurity, cloud infrastructure, or IT audit services in the NCR or Ontario region.",
-    "That looks like a great fit for us. Let's go with that one.",
   ],
   analyst: [
     "Please analyze this tender for us. We want to understand the full scope, key deadlines, mandatory requirements, evaluation criteria, and any risks we should be aware of given our company profile.",
