@@ -3,6 +3,7 @@
 | | |
 | --- | --- |
 | Project | [![GitHub Release](https://img.shields.io/github/v/release/jiroamato/bidly?color=green)](https://github.com/jiroamato/bidly/releases) [![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/) [![Repo Status](https://img.shields.io/badge/repo%20status-Active-brightgreen)](https://github.com/jiroamato/bidly) |
+| Meta | [![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md) [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) |
 
 Bidly is an Agentic-AI application that helps Canadian businesses find, understand, and bid on government tenders.
 
