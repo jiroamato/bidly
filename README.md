@@ -4,7 +4,7 @@
 | --- | --- |
 | Project | [![GitHub Release](https://img.shields.io/github/v/release/jiroamato/bidly?color=green)](https://github.com/jiroamato/bidly/releases) [![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/) [![Repo Status](https://img.shields.io/badge/repo%20status-Active-brightgreen)](https://github.com/jiroamato/bidly) |
 
-AI-powered procurement assistant that helps Canadian businesses find, understand, and bid on government tenders.
+Bidly is an Agentic-AI application that helps Canadian businesses find, understand, and bid on government tenders.
 
 ## How It Works
 
@@ -19,6 +19,11 @@ Bidly uses a multi-agent pipeline where each agent handles one stage of the proc
 | **Writer** | Execute | Drafts bid proposal sections and calculates pricing with correct GST/HST/PST by province |
 
 Agents unlock sequentially — completing one activates the next.
+
+## Demo
+
+Below is a short preview of the dashboard interface.
+![Dashboard demo](img/demo.gif)
 
 ## Architecture
 
