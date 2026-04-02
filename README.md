@@ -66,7 +66,7 @@ flowchart TD
 ### Prerequisites
 
 - Node.js 18+
-- A Supabase project with pgvector enabled
+- A Supabase project
 - API keys: [Anthropic](https://console.anthropic.com/)
 
 ### 1. Clone the repository
