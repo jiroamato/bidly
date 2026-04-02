@@ -3,7 +3,18 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { Sidebar } from "@/components/sidebar";
 import { MainHeader } from "@/components/main-header";
 import { ChatInput } from "@/components/chat-input";
-import type { AgentId, AgentStatus } from "@/lib/types";
+import type { AgentId, AgentStatus, BusinessProfile } from "@/lib/types";
+
+function makeProfile(overrides: Partial<BusinessProfile> = {}): BusinessProfile {
+  return {
+    id: 1, company_name: "Test", naics_codes: [], location: "", province: "",
+    capabilities: "", keywords: [], keyword_synonyms: {}, embedding: null,
+    insurance_amount: "", bonding_limit: null, certifications: [],
+    years_in_business: null, past_gov_experience: "", pbn: "",
+    is_canadian: null, security_clearance: "", project_size_min: null,
+    project_size_max: null, created_at: "", ...overrides,
+  };
+}
 
 describe("Sidebar", () => {
   const defaultStatuses: Record<AgentId, AgentStatus> = {
@@ -33,11 +44,7 @@ describe("Sidebar", () => {
   });
 
   it("renders company name when profile is set", () => {
-    const profile = {
-      id: 1, company_name: "Acme Corp", naics_codes: ["238220"],
-      location: "Toronto", province: "Ontario", capabilities: "",
-      keywords: [], created_at: "",
-    };
+    const profile = makeProfile({ company_name: "Acme Corp", naics_codes: ["238220"], location: "Toronto", province: "Ontario" });
     render(
       <Sidebar activeAgent="profile" statuses={defaultStatuses} profile={profile} onAgentClick={() => {}} />
     );
@@ -45,11 +52,7 @@ describe("Sidebar", () => {
   });
 
   it("renders province and first NAICS code in footer", () => {
-    const profile = {
-      id: 1, company_name: "Test", naics_codes: ["238220", "999999"],
-      location: "", province: "Ontario", capabilities: "",
-      keywords: [], created_at: "",
-    };
+    const profile = makeProfile({ company_name: "Test", naics_codes: ["238220", "999999"], province: "Ontario" });
     const { container } = render(
       <Sidebar activeAgent="profile" statuses={defaultStatuses} profile={profile} onAgentClick={() => {}} />
     );
@@ -59,11 +62,7 @@ describe("Sidebar", () => {
   });
 
   it("handles profile with empty naics_codes (edge case)", () => {
-    const profile = {
-      id: 1, company_name: "Test", naics_codes: [],
-      location: "", province: "BC", capabilities: "",
-      keywords: [], created_at: "",
-    };
+    const profile = makeProfile({ company_name: "Test", province: "BC" });
     // Should not crash
     render(
       <Sidebar activeAgent="profile" statuses={defaultStatuses} profile={profile} onAgentClick={() => {}} />
@@ -176,13 +175,13 @@ describe("ChatInput", () => {
     expect(screen.getByText("Profile")).toBeInTheDocument();
   });
 
-  it("shows 'Send' button for profile agent, 'Ask' for others", () => {
+  it("shows 'Send' button for all agents", () => {
     const { unmount } = render(<ChatInput agentId="profile" onSend={() => {}} />);
     expect(screen.getByText("Send")).toBeInTheDocument();
     unmount();
 
     render(<ChatInput agentId="scout" onSend={() => {}} />);
-    expect(screen.getByText("Ask")).toBeInTheDocument();
+    expect(screen.getByText("Send")).toBeInTheDocument();
   });
 
   it("calls onSend with trimmed text on Enter", () => {

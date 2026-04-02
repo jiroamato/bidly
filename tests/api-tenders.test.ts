@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock Supabase chainable query builder
 const mockResult = vi.fn();
 const mockEqChain = vi.fn(() => mockResult());
-const mockLimit = vi.fn(() => ({ eq: mockEqChain, then: mockResult }));
+const mockLimit = vi.fn((): unknown => ({ eq: mockEqChain, then: mockResult }));
 const mockOrder = vi.fn(() => ({ limit: mockLimit }));
 const mockSelect = vi.fn(() => ({ order: mockOrder, eq: vi.fn(() => ({ single: mockResult })) }));
 const mockFrom = vi.fn(() => ({ select: mockSelect }));
@@ -34,7 +34,7 @@ describe("GET /api/tenders", () => {
     expect(json).toEqual(tenders);
     expect(mockFrom).toHaveBeenCalledWith("tenders");
     expect(mockOrder).toHaveBeenCalledWith("closing_date", { ascending: true });
-    expect(mockLimit).toHaveBeenCalledWith(50);
+    expect(mockLimit).toHaveBeenCalledWith(200);
   });
 
   it("applies custom limit from query param", async () => {

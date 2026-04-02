@@ -1,87 +1,68 @@
 import { createClient } from "@supabase/supabase-js";
-import { getEmbeddings } from "../src/lib/voyage";
+import { VoyageAIClient } from "voyageai";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const BATCH_SIZE = 128;
 
-const BATCH_SIZE = 20; // Voyage free tier: max ~128 texts per call, keep small
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const voyage = new VoyageAIClient({ apiKey: process.env.VOYAGE_API_KEY });
 
 async function main() {
-  // Get IDs of tenders that already have embeddings
-  const { data: existing } = await supabase
-    .from("tender_embeddings")
-    .select("tender_id");
-  const embeddedIds = new Set((existing || []).map((e) => e.tender_id));
+  console.log("Fetching tenders without embeddings...");
 
-  // Get tenders that don't have embeddings yet
-  const { data: allTenders, error } = await supabase
+  const { data: tenders, error } = await supabase
     .from("tenders")
     .select("id, title, description")
     .order("id");
 
-  if (error) throw error;
-  const tenders = allTenders.filter((t) => !embeddedIds.has(t.id));
-  console.log(`Found ${allTenders.length} tenders, ${tenders.length} need embedding (${embeddedIds.size} already done)`);
+  if (error || !tenders) {
+    console.error("Failed to fetch tenders:", error?.message);
+    process.exit(1);
+  }
 
-  let embedded = 0;
-  for (let i = 0; i < tenders.length; i += BATCH_SIZE) {
-    const batch = tenders.slice(i, i + BATCH_SIZE);
-    const texts = batch.map(
-      (t) => `${t.title}\n\n${t.description}`.slice(0, 2000) // truncate long descriptions
-    );
+  const { data: existing } = await supabase
+    .from("tender_embeddings")
+    .select("tender_id");
 
-    try {
-      const embeddings = await getEmbeddings(texts, "voyage-3-lite", "document");
+  const existingIds = new Set((existing || []).map((e) => e.tender_id));
+  const toEmbed = tenders.filter((t) => !existingIds.has(t.id));
 
-      const rows = batch.map((t, idx) => ({
-        tender_id: t.id,
-        embedding: JSON.stringify(embeddings[idx]),
-        chunk_text: texts[idx],
-      }));
+  console.log(`${tenders.length} total tenders, ${toEmbed.length} need embeddings`);
 
-      const { error: insertError } = await supabase
-        .from("tender_embeddings")
-        .insert(rows);
+  if (toEmbed.length === 0) {
+    console.log("All tenders already have embeddings. Done!");
+    return;
+  }
 
-      if (insertError) {
-        console.error(`Batch ${i / BATCH_SIZE + 1} insert failed:`, insertError.message);
-      } else {
-        embedded += batch.length;
-        console.log(`Embedded batch ${i / BATCH_SIZE + 1} (${embedded}/${tenders.length})`);
-      }
-    } catch (err) {
-      console.error(`Batch ${i / BATCH_SIZE + 1} embedding failed, skipping:`, err);
+  for (let i = 0; i < toEmbed.length; i += BATCH_SIZE) {
+    const batch = toEmbed.slice(i, i + BATCH_SIZE);
+    const texts = batch.map((t) => `${t.title} ${t.description}`);
+
+    console.log(`Embedding batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} tenders)...`);
+
+    const result = await voyage.embed({
+      input: texts,
+      model: "voyage-3",
+    });
+
+    const rows = batch.map((tender, idx) => ({
+      tender_id: tender.id,
+      embedding: JSON.stringify(result.data![idx].embedding),
+    }));
+
+    const { error: insertError } = await supabase
+      .from("tender_embeddings")
+      .upsert(rows, { onConflict: "tender_id" });
+
+    if (insertError) {
+      console.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, insertError.message);
+    } else {
+      console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1} done.`);
     }
-
-    // Rate limit: 300 RPM on free tier, so ~100ms between batches is safe
-    await new Promise((r) => setTimeout(r, 200));
   }
 
-  console.log(`\nEmbedded ${embedded} tenders. Creating IVFFlat index...`);
-
-  // Create IVFFlat index AFTER data is loaded (needs rows to build lists)
-  const lists = Math.max(1, Math.floor(Math.sqrt(embedded)));
-  const { error: indexError } = await supabase.rpc("exec_sql", {
-    query: `create index if not exists tender_embeddings_ivfflat_idx
-            on tender_embeddings
-            using ivfflat (embedding vector_cosine_ops)
-            with (lists = ${lists});`,
-  });
-
-  // If RPC doesn't exist, print the SQL for manual execution
-  if (indexError) {
-    console.log("\nRun this SQL manually in Supabase SQL Editor:");
-    console.log(`CREATE INDEX IF NOT EXISTS tender_embeddings_ivfflat_idx
-  ON tender_embeddings
-  USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = ${lists});`);
-  } else {
-    console.log("IVFFlat index created!");
-  }
-
-  console.log("Done!");
+  console.log("Done embedding tenders!");
 }
 
 main().catch(console.error);

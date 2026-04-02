@@ -1,8 +1,15 @@
-import { describe, it, expect } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useAgent } from "@/hooks/use-agent";
 
 describe("useAgent hook", () => {
+  it("does NOT fetch /api/profile on mount (no hydration)", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    renderHook(() => useAgent());
+    expect(fetchSpy).not.toHaveBeenCalledWith("/api/profile");
+    fetchSpy.mockRestore();
+  });
+
   it("initializes with profile active, all others locked", () => {
     const { result } = renderHook(() => useAgent());
     expect(result.current.activeAgent).toBe("profile");
@@ -99,14 +106,13 @@ describe("useAgent hook", () => {
     it("stores the business profile", () => {
       const { result } = renderHook(() => useAgent());
       const mockProfile = {
-        id: 1,
-        company_name: "Test Corp",
-        naics_codes: ["238220"],
-        location: "Toronto",
-        province: "Ontario",
-        capabilities: "Plumbing",
-        keywords: ["plumbing"],
-        created_at: "2026-03-22T00:00:00Z",
+        id: 1, company_name: "Test Corp", naics_codes: ["238220"],
+        location: "Toronto", province: "Ontario", capabilities: "Plumbing",
+        keywords: ["plumbing"], keyword_synonyms: {}, embedding: null,
+        insurance_amount: "", bonding_limit: null, certifications: [],
+        years_in_business: null, past_gov_experience: "", pbn: "",
+        is_canadian: null, security_clearance: "", project_size_min: null,
+        project_size_max: null, created_at: "2026-03-22T00:00:00Z",
       };
       act(() => result.current.setProfile(mockProfile));
       expect(result.current.profile).toEqual(mockProfile);
@@ -116,11 +122,19 @@ describe("useAgent hook", () => {
       const { result } = renderHook(() => useAgent());
       const profile1 = {
         id: 1, company_name: "A", naics_codes: [], location: "", province: "",
-        capabilities: "", keywords: [], created_at: "",
+        capabilities: "", keywords: [], keyword_synonyms: {}, embedding: null,
+        insurance_amount: "", bonding_limit: null, certifications: [],
+        years_in_business: null, past_gov_experience: "", pbn: "",
+        is_canadian: null, security_clearance: "", project_size_min: null,
+        project_size_max: null, created_at: "",
       };
       const profile2 = {
         id: 2, company_name: "B", naics_codes: [], location: "", province: "",
-        capabilities: "", keywords: [], created_at: "",
+        capabilities: "", keywords: [], keyword_synonyms: {}, embedding: null,
+        insurance_amount: "", bonding_limit: null, certifications: [],
+        years_in_business: null, past_gov_experience: "", pbn: "",
+        is_canadian: null, security_clearance: "", project_size_min: null,
+        project_size_max: null, created_at: "",
       };
       act(() => result.current.setProfile(profile1));
       act(() => result.current.setProfile(profile2));
@@ -142,6 +156,32 @@ describe("useAgent hook", () => {
       };
       act(() => result.current.setSelectedTender(mockTender));
       expect(result.current.selectedTender).toEqual(mockTender);
+    });
+  });
+
+  describe("profileId", () => {
+    it("starts as null", () => {
+      const { result } = renderHook(() => useAgent());
+      expect(result.current.profileId).toBeNull();
+    });
+
+    it("sets profileId when setProfile is called with a profile that has an id", () => {
+      const { result } = renderHook(() => useAgent());
+      act(() => result.current.setProfile({ id: 42, company_name: "Test" } as any));
+      expect(result.current.profileId).toBe(42);
+    });
+  });
+
+  describe("tenderId", () => {
+    it("starts as null", () => {
+      const { result } = renderHook(() => useAgent());
+      expect(result.current.tenderId).toBeNull();
+    });
+
+    it("sets tenderId when setSelectedTender is called", () => {
+      const { result } = renderHook(() => useAgent());
+      act(() => result.current.setSelectedTender({ id: 99 } as any));
+      expect(result.current.tenderId).toBe(99);
     });
   });
 });

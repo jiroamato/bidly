@@ -151,10 +151,27 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
           </div>
         )}
         <div
-          className="mt-4 text-[9px] tracking-wide"
+          className="mt-4 text-[9px] leading-[1.6] tracking-wide"
           style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
         >
-          Bidly v1.0
+          <strong style={{ color: "var(--text-muted)" }}>Proof of concept only.</strong>
+          <br />
+          All generated content is fictional. Real procurement involves document
+          processing and additional steps not shown here &mdash; this demo
+          illustrates how AI agents can integrate into the bidding workflow.
+        </div>
+        <div
+          className="mt-2.5 text-[9px] leading-[1.6] tracking-wide"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
+        >
+          Tip: activate <strong style={{ color: "var(--text-muted)" }}>Demo Mode</strong> in the
+          header to see the full workflow in action.
+        </div>
+        <div
+          className="mt-3 text-[9px] tracking-wide"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
+        >
+          Bidly {process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
           <br />&copy; 2026 Hackathon Build
         </div>
       </div>

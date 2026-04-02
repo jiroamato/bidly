@@ -1,10 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
-import { getEmbeddings } from "@/lib/voyage";
+import { createServerClient } from "@/lib/supabase";
+import { combineTenderScores } from "@/lib/matching/score-tenders";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const supabase = createServerClient();
 
 export async function handleToolCall(
   toolName: string,
@@ -19,10 +16,28 @@ export async function handleToolCall(
       return await getCompanyProfile(toolInput);
     case "saveProgress":
       return await saveProgress(toolInput);
-    case "checkEligibility":
+    case "matchTendersToProfile":
+      return await matchTendersToProfile(toolInput);
+    case "filterTenders":
+      return await filterTenders(toolInput);
+    case "checkBuyCanadian":
+      return checkBuyCanadian(toolInput);
+    case "runComplianceAssessment":
       return JSON.stringify({
-        note: "Eligibility check is performed by the AI based on profile and tender data. Return your assessment directly.",
+        note: "Run the compliance assessment based on the interview conversation. Evaluate each of the 6 sections and return a structured ComplianceAssessment.",
       });
+    case "saveTenderSelection":
+      return await saveTenderSelection(toolInput);
+    case "saveAnalysis":
+      return await saveAnalysis(toolInput);
+    case "saveComplianceResult":
+      return await saveComplianceResult(toolInput);
+    case "saveDraft":
+      return await saveDraft(toolInput);
+    case "updateProfile":
+      return await updateProfile(toolInput);
+    case "getMatchContext":
+      return await getMatchContext(toolInput);
     case "summarizeTender":
       return await getTenderDetails(toolInput); // Return raw data, AI summarizes
     case "getFormChecklist":
@@ -45,38 +60,9 @@ export async function handleToolCall(
 async function searchTenders(input: Record<string, any>): Promise<string> {
   const { query, category, region, limit = 20 } = input;
 
-  if (query) {
-    // Vector similarity search
-    const [embedding] = await getEmbeddings([query]);
-    const { data, error } = await supabase.rpc("match_tenders", {
-      query_embedding: JSON.stringify(embedding),
-      match_count: limit,
-    });
-
-    if (error) return JSON.stringify({ error: error.message });
-
-    // Fetch full tender details for matched IDs
-    const tenderIds = data.map((d: any) => d.tender_id);
-    const { data: tenders } = await supabase
-      .from("tenders")
-      .select("*")
-      .in("id", tenderIds);
-
-    // Merge similarity scores
-    const results = tenders?.map((t: any) => ({
-      ...t,
-      match_score: Math.round(
-        (data.find((d: any) => d.tender_id === t.id)?.similarity || 0) * 100
-      ),
-    }));
-
-    results?.sort((a: any, b: any) => b.match_score - a.match_score);
-    return JSON.stringify(results || []);
-  }
-
-  // Filter-based search
   let q = supabase.from("tenders").select("*").order("closing_date", { ascending: true }).limit(limit);
 
+  if (query) q = q.or(`title.ilike.%${query}%,description.ilike.%${query}%`);
   if (category) q = q.eq("procurement_category", category);
   if (region) q = q.contains("regions_of_delivery", [region]);
 
@@ -109,8 +95,299 @@ async function getCompanyProfile(input: Record<string, any>): Promise<string> {
   return JSON.stringify(data);
 }
 
+async function matchTendersToProfile(input: Record<string, any>): Promise<string> {
+  const { profile_id } = input;
+
+  // Fetch profile
+  const { data: profile, error: profileError } = await supabase
+    .from("business_profiles")
+    .select("*")
+    .eq("id", profile_id)
+    .single();
+
+  if (profileError || !profile) {
+    return JSON.stringify({ error: profileError?.message || "Profile not found" });
+  }
+
+  // Fetch ALL tenders (no regional pre-filter)
+  const { data: tenders, error: tenderError } = await supabase
+    .from("tenders")
+    .select("*");
+
+  if (tenderError) return JSON.stringify({ error: tenderError.message });
+
+  // Score using shared module — return top and bottom matches with trimmed fields
+  const scored = combineTenderScores(profile, tenders || []);
+  const trimTender = (t: any) => ({
+    id: t.id,
+    title: t.title,
+    reference_number: t.reference_number,
+    closing_date: t.closing_date,
+    status: t.status,
+    procurement_category: t.procurement_category,
+    contracting_entity: t.contracting_entity,
+    regions_of_delivery: t.regions_of_delivery,
+    match_score: t.match_score,
+    matched_keywords: t.matched_keywords,
+    description: t.description?.slice(0, 200),
+  });
+  const top = scored.slice(0, 20).map(trimTender);
+  const bottom = scored.slice(-10).reverse().map(trimTender);
+  return JSON.stringify({ total_scored: scored.length, top_matches: top, lowest_matches: bottom });
+}
+
+async function filterTenders(input: Record<string, any>): Promise<string> {
+  const { category, contracting_entity, status, closing_after, closing_before, limit = 20 } = input;
+
+  let q = supabase.from("tenders").select("*");
+
+  if (category) q = q.eq("procurement_category", category);
+  if (contracting_entity) q = q.ilike("contracting_entity", `%${contracting_entity}%`);
+  if (status) q = q.eq("status", status);
+  if (closing_after) q = q.gte("closing_date", closing_after);
+  if (closing_before) q = q.lte("closing_date", closing_before);
+
+  q = q.order("closing_date", { ascending: true }).limit(limit);
+
+  const { data, error } = await q;
+  if (error) return JSON.stringify({ error: error.message });
+  return JSON.stringify(data || []);
+}
+
+function checkBuyCanadian(input: Record<string, any>): string {
+  const { is_canadian, trade_agreements = [] } = input;
+
+  if (is_canadian === true) {
+    return JSON.stringify({
+      status: "pass",
+      hard_gate: false,
+      message: "Company meets Buy Canadian policy requirements.",
+      trade_agreements,
+    });
+  }
+
+  if (is_canadian === false) {
+    return JSON.stringify({
+      status: "fail",
+      hard_gate: true,
+      message: "Company does not meet Buy Canadian policy. The company must be Canadian-owned to bid on this tender.",
+      trade_agreements,
+    });
+  }
+
+  return JSON.stringify({
+    status: "pending",
+    hard_gate: false,
+    message: "Canadian ownership status is unknown. Please confirm whether the company is Canadian-owned.",
+    trade_agreements,
+  });
+}
+
+async function saveTenderSelection(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id, match_score, matched_keywords, match_reasoning } = input;
+
+  const { data, error } = await supabase
+    .from("tender_selections")
+    .upsert(
+      { profile_id, tender_id, match_score, matched_keywords, match_reasoning },
+      { onConflict: "profile_id,tender_id" }
+    )
+    .select()
+    .single();
+
+  if (error) return JSON.stringify({ error: error.message });
+  return JSON.stringify(data);
+}
+
+async function saveAnalysis(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id, analysis } = input;
+
+  const { data, error } = await supabase
+    .from("tender_analyses")
+    .upsert(
+      { profile_id, tender_id, analysis },
+      { onConflict: "profile_id,tender_id" }
+    )
+    .select()
+    .single();
+
+  if (error) return JSON.stringify({ error: error.message });
+  return JSON.stringify(data);
+}
+
+async function saveComplianceResult(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id, result, explanation } = input;
+
+  const { data, error } = await supabase
+    .from("eligibility_checks")
+    .upsert(
+      { profile_id, tender_id, result, explanation, responses: {}, documentation_checklist: [] },
+      { onConflict: "profile_id,tender_id" }
+    )
+    .select()
+    .single();
+
+  if (error) return JSON.stringify({ error: error.message });
+  return JSON.stringify(data);
+}
+
+// Serialize concurrent saveDraft calls per draft to prevent read-merge-write races
+const draftLocks = new Map<string, Promise<string>>();
+
+async function saveDraft(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id } = input;
+  const key = `${profile_id}:${tender_id}`;
+
+  // Chain behind any in-flight save for the same draft
+  const prev = draftLocks.get(key) ?? Promise.resolve("");
+  const current = prev.then(() => saveDraftInner(input)).finally(() => {
+    // Clean up if we're still the latest in the chain
+    if (draftLocks.get(key) === current) draftLocks.delete(key);
+  });
+  draftLocks.set(key, current);
+  return current;
+}
+
+async function saveDraftInner(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id, section_type, content } = input;
+
+  // Read existing draft to merge sections (upsert would overwrite the entire JSONB)
+  const { data: existing } = await supabase
+    .from("bid_drafts")
+    .select("sections")
+    .eq("profile_id", profile_id)
+    .eq("tender_id", tender_id)
+    .single();
+
+  const mergedSections = { ...(existing?.sections || {}), [section_type]: content };
+
+  const { data, error } = await supabase
+    .from("bid_drafts")
+    .upsert(
+      { profile_id, tender_id, sections: mergedSections, status: "draft" },
+      { onConflict: "profile_id,tender_id" }
+    )
+    .select()
+    .single();
+
+  if (error) return JSON.stringify({ error: error.message });
+  return JSON.stringify(data);
+}
+
+async function updateProfile(input: Record<string, any>): Promise<string> {
+  const { profile_id } = input;
+  // AI sometimes sends updates as a JSON string instead of an object
+  let updates = input.updates;
+  if (typeof updates === "string") {
+    try { updates = JSON.parse(updates); } catch { return JSON.stringify({ error: "Invalid updates: not valid JSON" }); }
+  }
+
+  // Reject updates to protected fields
+  const protectedFields = ["id", "created_at"];
+  for (const field of protectedFields) {
+    if (field in updates) {
+      return JSON.stringify({ error: `Cannot update protected field: ${field}` });
+    }
+  }
+
+  const cleanedUpdates = stripUnknownColumns(updates, PROFILE_COLUMNS);
+
+  // Try update first (avoid .single() — it throws when 0 rows match)
+  const { data, error } = await supabase
+    .from("business_profiles")
+    .update(cleanedUpdates)
+    .eq("id", profile_id)
+    .select();
+
+  if (!error && data && data.length > 0) return JSON.stringify(data[0]);
+
+  // If profile doesn't exist, try fetching the latest one and updating that
+  const { data: latest } = await supabase
+    .from("business_profiles")
+    .select("id")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (latest && latest.length > 0) {
+    const { data: updated, error: retryError } = await supabase
+      .from("business_profiles")
+      .update(cleanedUpdates)
+      .eq("id", latest[0].id)
+      .select();
+    if (!retryError && updated && updated.length > 0) return JSON.stringify(updated[0]);
+  }
+
+  // No profile exists — create one (use placeholder name if not provided yet)
+  const insertData = { ...cleanedUpdates };
+  if (!insertData.company_name) {
+    insertData.company_name = "New Company";
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("business_profiles")
+    .insert(insertData)
+    .select()
+    .single();
+
+  if (insertError) return JSON.stringify({ error: insertError.message });
+  return JSON.stringify(inserted);
+}
+
+async function getMatchContext(input: Record<string, any>): Promise<string> {
+  const { profile_id, tender_id } = input;
+
+  const { data, error } = await supabase
+    .from("tender_selections")
+    .select("*")
+    .eq("profile_id", profile_id)
+    .eq("tender_id", tender_id)
+    .single();
+
+  if (error) return JSON.stringify({ error: error.message });
+  return JSON.stringify(data);
+}
+
+// Valid columns in the business_profiles table
+const PROFILE_COLUMNS = new Set([
+  "id", "company_name", "naics_codes", "location", "province", "capabilities",
+  "keywords", "keyword_synonyms", "embedding", "insurance_amount", "bonding_limit",
+  "certifications", "years_in_business", "past_gov_experience", "pbn",
+  "is_canadian", "security_clearance", "project_size_min", "project_size_max",
+]);
+
+/**
+ * Normalize NAICS codes — the AI sometimes sends objects like
+ * {code: "541510", description: "..."} instead of plain "541510".
+ */
+function normalizeNaicsCodes(codes: any[]): string[] {
+  return codes.map((c) => {
+    if (typeof c === "string") return c;
+    if (typeof c === "object" && c?.code) return String(c.code);
+    return String(c);
+  });
+}
+
+function stripUnknownColumns(data: Record<string, any>, validColumns: Set<string>): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (validColumns.has(key)) {
+      // Normalize NAICS codes to plain strings
+      if (key === "naics_codes" && Array.isArray(value)) {
+        cleaned[key] = normalizeNaicsCodes(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
+
 async function saveProgress(input: Record<string, any>): Promise<string> {
-  const { type, data } = input;
+  const { type } = input;
+  let data = input.data;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch { return JSON.stringify({ error: "Invalid data: not valid JSON" }); }
+  }
   const tableMap: Record<string, string> = {
     profile: "business_profiles",
     eligibility: "eligibility_checks",
@@ -122,16 +399,16 @@ async function saveProgress(input: Record<string, any>): Promise<string> {
   if (!table) return JSON.stringify({ error: `Unknown save type: ${type}` });
 
   if (type === "profile") {
+    const cleanedData = stripUnknownColumns(data, PROFILE_COLUMNS);
     const { data: result, error } = await supabase
       .from(table)
-      .upsert(data)
+      .upsert(cleanedData)
       .select()
       .single();
     if (error) return JSON.stringify({ error: error.message });
     return JSON.stringify(result);
   }
 
-  // For other types, upsert by (profile_id, tender_id)
   const { data: result, error } = await supabase
     .from(table)
     .upsert(data, { onConflict: "profile_id,tender_id" })

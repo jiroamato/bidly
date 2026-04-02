@@ -1,7 +1,13 @@
-export function splitPipes(val: string | undefined): string[] {
+export function splitValues(val: string | undefined): string[] {
   if (!val || val.trim() === "") return [];
-  return val.split("|").map((s) => s.trim()).filter(Boolean);
+  return val
+    .split(/[|\n]/)
+    .map((s) => s.trim().replace(/^\*/, "").trim())
+    .filter(Boolean);
 }
+
+// Backward-compatible alias
+export const splitPipes = splitValues;
 
 export function filterTenders(records: Record<string, string>[]): Record<string, string>[] {
   return records.filter((r) => {
@@ -19,18 +25,18 @@ export function mapTenderRow(r: Record<string, string>, fallbackIndex: number) {
     publication_date: r["publicationDate-datePublication"] || null,
     closing_date: r["tenderClosingDate-appelOffresDateCloture"] || null,
     status: r["tenderStatus-appelOffresStatut-eng"] || "",
-    procurement_category: r["procurementCategory-categorieApprovisionnement"] || "",
+    procurement_category: (r["procurementCategory-categorieApprovisionnement"] || "").replace(/^\*/, "").trim(),
     notice_type: r["noticeType-avisType-eng"] || "",
     procurement_method: r["procurementMethod-methodeApprovisionnement-eng"] || "",
     selection_criteria: r["selectionCriteria-criteresSelection-eng"] || "",
-    gsin_codes: splitPipes(r["gsin-nibs"]),
-    unspsc_codes: splitPipes(r["unspsc"]),
-    regions_of_opportunity: splitPipes(r["regionsOfOpportunity"]),
-    regions_of_delivery: splitPipes(r["regionsOfDelivery"]),
-    trade_agreements: splitPipes(r["tradeAgreements"]),
-    contracting_entity: r["contractingEntityName"] || "",
+    gsin_codes: splitValues(r["gsin-nibs"]),
+    unspsc_codes: splitValues(r["unspsc"]),
+    regions_of_opportunity: splitValues(r["regionsOfOpportunity-regionAppelOffres-eng"]),
+    regions_of_delivery: splitValues(r["regionsOfDelivery-regionsLivraison-eng"]),
+    trade_agreements: splitValues(r["tradeAgreements-accordsCommerciaux-eng"]),
+    contracting_entity: (r["contractingEntityName-nomEntitContractante-eng"] || "").replace(/^\*/, "").trim(),
     notice_url: r["noticeURL-URLavis-eng"] || "",
-    attachment_urls: splitPipes(r["attachment-piecesJointes-eng"]),
+    attachment_urls: splitValues(r["attachment-piecesJointes-eng"]),
     raw_csv_data: r,
   };
 }

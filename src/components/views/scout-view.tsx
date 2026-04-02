@@ -1,41 +1,60 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Tender } from "@/lib/types";
-import { ChatInput } from "@/components/chat-input";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Tender, TenderWithScore } from "@/lib/types";
+import { ChatPanel } from "@/components/chat-panel";
+import { apiFetch } from "@/lib/api-fetch";
 import { AgentState } from "@/hooks/use-agent";
-import { useChat } from "@/hooks/use-chat";
 
 interface ScoutViewProps {
   agent: AgentState;
+  externalValue?: string;
 }
-
-type TenderWithScore = Tender & { match_score: number };
 
 const FILTERS = ["All Matches", "High Match", "Closing Soon", "Ontario", "Federal"];
 
-export function ScoutView({ agent }: ScoutViewProps) {
-  const { sendMessage } = useChat("scout");
+export function ScoutView({ agent, externalValue }: ScoutViewProps) {
   const [activeFilter, setActiveFilter] = useState("All Matches");
-  const [tenders, setTenders] = useState<TenderWithScore[]>([]);
-  const [loading, setLoading] = useState(true);
+  const hasCachedTenders = agent.matchedTenders.length > 0;
+  const [tenders, setTenders] = useState<TenderWithScore[]>(agent.matchedTenders);
+  const [loading, setLoading] = useState(!hasCachedTenders);
+
+  const profileId = agent.profile?.id;
+
+  // Fetch scored tenders from match endpoint
+  const loadTenders = useCallback(async () => {
+    if (!profileId) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/api/tenders/match?profileId=${profileId}`);
+      if (!res.ok) throw new Error("Failed to load tenders");
+      const data: Tender[] = await res.json();
+      // Use match_score from the API if available, default to 0
+      const scored: TenderWithScore[] = data.map((t) => ({
+        ...t,
+        match_score: (t as TenderWithScore).match_score ?? 0,
+        bm25_score: (t as TenderWithScore).bm25_score ?? 0,
+        category_score: (t as TenderWithScore).category_score ?? 0,
+        synonym_score: (t as TenderWithScore).synonym_score ?? 0,
+        location_score: (t as TenderWithScore).location_score ?? 0,
+        matched_keywords: (t as TenderWithScore).matched_keywords ?? [],
+      }));
+      scored.sort((a, b) => b.match_score - a.match_score);
+      setTenders(scored);
+      agent.setMatchedTenders(scored);
+    } catch (err) {
+      console.error("Failed to load tenders:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [profileId, agent.setMatchedTenders]);
 
   useEffect(() => {
-    fetch("/api/tenders?limit=50")
-      .then((r) => r.json())
-      .then((data: Tender[]) => {
-        // Add match_score (placeholder until AI search is wired)
-        const scored = data.map((t, i) => ({
-          ...t,
-          match_score: Math.max(95 - i * 5, 40),
-        }));
-        setTenders(scored);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+    if (hasCachedTenders) return;
+    loadTenders();
+  }, [loadTenders, hasCachedTenders]);
 
-  const filtered = tenders.filter((t) => {
+  const filtered = useMemo(() => tenders.filter((t) => {
     if (activeFilter === "High Match") return t.match_score >= 80;
     if (activeFilter === "Closing Soon") {
       const d = new Date(t.closing_date);
@@ -46,17 +65,20 @@ export function ScoutView({ agent }: ScoutViewProps) {
     if (activeFilter === "Ontario") return t.regions_of_opportunity.includes("Ontario");
     if (activeFilter === "Federal") return ["DND", "PSPC", "PWGSC"].some((e) => t.contracting_entity.includes(e));
     return true;
-  });
+  }), [tenders, activeFilter]);
 
-  const highMatch = tenders.filter((t) => t.match_score >= 80).length;
-  const closingSoon = tenders.filter((t) => {
-    const d = new Date(t.closing_date);
-    const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    return diff <= 14;
-  }).length;
-  const avgScore = tenders.length > 0
-    ? Math.round(tenders.reduce((s, t) => s + t.match_score, 0) / tenders.length)
-    : 0;
+  const { highMatch, closingSoon, avgScore } = useMemo(() => {
+    const high = tenders.filter((t) => t.match_score >= 80).length;
+    const closing = tenders.filter((t) => {
+      const d = new Date(t.closing_date);
+      const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+      return diff <= 14;
+    }).length;
+    const avg = tenders.length > 0
+      ? Math.round(tenders.reduce((s, t) => s + t.match_score, 0) / tenders.length)
+      : 0;
+    return { highMatch: high, closingSoon: closing, avgScore: avg };
+  }, [tenders]);
 
   const handleAnalyze = (tender: Tender) => {
     agent.setSelectedTender(tender);
@@ -65,7 +87,8 @@ export function ScoutView({ agent }: ScoutViewProps) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col flex-1 h-full">
+      <div className="flex-1 overflow-y-auto min-h-0">
       <div className="px-10 py-8">
         {/* Title */}
         <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 400 }}>
@@ -89,7 +112,7 @@ export function ScoutView({ agent }: ScoutViewProps) {
         {!loading && tenders.length === 0 && (
           <div className="mt-8 text-center py-12" style={{ color: "var(--text-muted)" }}>
             <div className="text-[11px] tracking-[2px] uppercase" style={{ fontFamily: "var(--font-mono)" }}>
-              No matching tenders found. Try broadening your search criteria.
+              No matching tenders found. Ask the Scout Agent to find matches for your profile.
             </div>
           </div>
         )}
@@ -151,7 +174,8 @@ export function ScoutView({ agent }: ScoutViewProps) {
 
         {/* Tender List */}
         <div className="space-y-3">
-          {filtered.map((tender) => {
+          {filtered.map((tender, idx) => {
+            const isTopMatch = idx === 0 && filtered.length > 1 && tender.match_score >= 80;
             const isHigh = tender.match_score >= 80;
             const closingDate = new Date(tender.closing_date);
             const daysLeft = Math.ceil((closingDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -228,12 +252,12 @@ export function ScoutView({ agent }: ScoutViewProps) {
                 {/* Action */}
                 <button
                   onClick={() => handleAnalyze(tender)}
-                  className="text-[11px] tracking-[1px] uppercase px-4 py-2 border flex-shrink-0 transition-colors hover:border-[var(--agent-scout)] hover:text-[var(--agent-scout)]"
+                  className={`text-[11px] tracking-[1px] uppercase px-4 py-2 border flex-shrink-0 transition-colors hover:border-[var(--agent-scout)] hover:text-[var(--agent-scout)] ${isTopMatch ? "animate-glow-green" : ""}`}
                   style={{
                     fontFamily: "var(--font-mono)",
-                    borderColor: "var(--bidly-border)",
-                    background: "var(--white)",
-                    color: "var(--text-secondary)",
+                    borderColor: isTopMatch ? "var(--success)" : "var(--bidly-border)",
+                    background: isTopMatch ? "#ecfdf5" : "var(--white)",
+                    color: isTopMatch ? "var(--success)" : "var(--text-secondary)",
                     cursor: "pointer",
                   }}
                 >
@@ -244,9 +268,15 @@ export function ScoutView({ agent }: ScoutViewProps) {
           })}
         </div>
       </div>
+      </div>
 
-      {/* Chat Input */}
-      <ChatInput agentId="scout" onSend={sendMessage} />
+      {/* Chat Panel */}
+      <ChatPanel
+        agentId="scout"
+        profileId={agent.profile?.id}
+        tenderId={agent.selectedTender?.id}
+        externalValue={externalValue}
+      />
     </div>
   );
 }

@@ -6,6 +6,18 @@ export interface BusinessProfile {
   province: string;
   capabilities: string;
   keywords: string[];
+  keyword_synonyms: Record<string, string[]>;
+  embedding: number[] | null;
+  insurance_amount: string;
+  bonding_limit: number | null;
+  certifications: string[];
+  years_in_business: number | null;
+  past_gov_experience: string;
+  pbn: string;
+  is_canadian: boolean | null;
+  security_clearance: string;
+  project_size_min: number | null;
+  project_size_max: number | null;
   created_at: string;
 }
 
@@ -33,6 +45,61 @@ export interface Tender {
   match_score?: number;
 }
 
+export type TenderWithScore = Tender & {
+  match_score: number;
+  bm25_score: number;
+  category_score: number;
+  synonym_score: number;
+  location_score: number;
+  matched_keywords: string[];
+};
+
+export interface TenderSelection {
+  id: number;
+  profile_id: number;
+  tender_id: number;
+  match_score: number;
+  matched_keywords: string[];
+  match_reasoning: string;
+  created_at: string;
+}
+
+export interface TenderAnalysisData {
+  whatTheyWant: string[];
+  deadlines: { label: string; value: string; urgent: boolean }[];
+  forms: string[];
+  evaluation: { criteria: string; weight: string }[];
+  risks: { level: "high" | "medium" | "low"; text: string }[];
+}
+
+export interface TenderAnalysis {
+  id: number;
+  profile_id: number;
+  tender_id: number;
+  analysis: TenderAnalysisData;
+  created_at: string;
+}
+
+export interface ComplianceItem {
+  name: string;
+  description: string;
+  status: "pass" | "fail" | "warn" | "pending";
+  statusLabel: string;
+  action: string | null;
+}
+
+export interface ComplianceSection {
+  title: string;
+  items: ComplianceItem[];
+}
+
+export interface ComplianceAssessment {
+  overallResult: "eligible" | "conditionally_eligible" | "not_eligible";
+  overallLabel: string;
+  summaryNote: string;
+  sections: ComplianceSection[];
+}
+
 export interface EligibilityCheck {
   id: number;
   profile_id: number;
@@ -55,6 +122,7 @@ export interface BidDraft {
     project_mgmt?: string;
     safety?: string;
     pricing?: string;
+    forms?: string;
   };
   status: "draft" | "complete";
   created_at: string;

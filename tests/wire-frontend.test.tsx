@@ -16,9 +16,33 @@ vi.mock("@/hooks/use-chat", () => ({
   }),
 }));
 
+// Mock ChatHistoryContext used by ChatPanel and views
+vi.mock("@/contexts/chat-history-context", () => ({
+  useChatHistory: () => [[], vi.fn()],
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+/** Build a fake SSE Response from a plain text string */
+function makeSSEResponse(text: string) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  for (let i = 0; i < text.length; i += 4) {
+    chunks.push(`data: ${JSON.stringify({ text: text.slice(i, i + 4) })}\n\n`);
+  }
+  chunks.push("data: [DONE]\n\n");
+  const body = new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+      }
+      controller.close();
+    },
+  });
+  return { ok: true, body, headers: new Headers({ "Content-Type": "text/event-stream" }) };
+}
 
 function makeAgentState(overrides = {}) {
   return {
@@ -33,7 +57,11 @@ function makeAgentState(overrides = {}) {
     profile: {
       id: 1, company_name: "Test Corp", naics_codes: ["238220"],
       location: "Toronto", province: "Ontario", capabilities: "Plumbing",
-      keywords: ["plumbing"], created_at: "2026-01-01",
+      keywords: ["plumbing"], keyword_synonyms: {}, embedding: null,
+      insurance_amount: "$1M", bonding_limit: 100000, certifications: [],
+      years_in_business: 5, past_gov_experience: "", pbn: "",
+      is_canadian: true, security_clearance: "", project_size_min: null,
+      project_size_max: null, created_at: "2026-01-01",
     },
     selectedTender: {
       id: 42, reference_number: "REF-001", solicitation_number: "SOL-001",
@@ -46,10 +74,17 @@ function makeAgentState(overrides = {}) {
       trade_agreements: ["CFTA"], contracting_entity: "City of Toronto",
       notice_url: "", attachment_urls: [],
     },
+    profileId: 1,
+    tenderId: null,
+    matchedTenders: [],
+    tenderAnalysis: null,
     setActiveAgent: vi.fn(),
     completeAgent: vi.fn(),
     setProfile: vi.fn(),
     setSelectedTender: vi.fn(),
+    setMatchedTenders: vi.fn(),
+    setTenderAnalysis: vi.fn(),
+    resetDemo: vi.fn(),
     ...overrides,
   };
 }
@@ -66,6 +101,7 @@ describe("ScoutView — API wiring", () => {
       { id: 1, title: "Tender A", reference_number: "REF-1", closing_date: "2026-05-01", status: "Open", procurement_category: "CNST", contracting_entity: "City", regions_of_opportunity: ["Ontario"], regions_of_delivery: ["Ontario"], match_score: 90 },
     ];
     mockFetch.mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve(tenders),
     });
 
@@ -74,7 +110,7 @@ describe("ScoutView — API wiring", () => {
       render(<ScoutView agent={makeAgentState()} />);
     });
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/tenders?limit=50");
+    expect(mockFetch).toHaveBeenCalledWith("/api/tenders/match?profileId=1");
   });
 
   it("shows loading state before tenders arrive", async () => {
@@ -91,6 +127,7 @@ describe("ScoutView — API wiring", () => {
 
   it("shows empty state when no tenders returned", async () => {
     mockFetch.mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve([]),
     });
 
@@ -106,6 +143,7 @@ describe("ScoutView — API wiring", () => {
 
   it("renders chat input that is not disabled", async () => {
     mockFetch.mockResolvedValueOnce({
+      ok: true,
       json: () => Promise.resolve([]),
     });
 
@@ -126,11 +164,24 @@ describe("ProfileView — API wiring", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("POSTs to /api/profile when profile is completed", async () => {
-    const savedProfile = { id: 5, company_name: "Acme", province: "Ontario" };
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(savedProfile),
+  it("extracts and POSTs profile for new users when completed", async () => {
+    const savedProfile = { id: 5, company_name: "Acme Corp", province: "Ontario" };
+    // New user: profile is null, so extraction via Claude is used
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile" && opts?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(savedProfile),
+        });
+      }
+      // /api/ai calls — extraction returns JSON, chat returns SSE
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (lastMsg?.content?.includes("Extract the company profile")) {
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
+      }
+      return Promise.resolve(makeSSEResponse("Got it. Next question?"));
     });
 
     const agent = makeAgentState({
@@ -144,30 +195,68 @@ describe("ProfileView — API wiring", () => {
       render(<ProfileView agent={agent} />);
     });
 
-    // Answer all 5 questions
-    const answers = ["Acme Corp", "Ontario", "Plumbing, pipes", "500K-2M, WSIB", "yes"];
+    const answers = ["Acme Corp", "Ontario", "Plumbing, pipes", "500K-2M, WSIB"];
+    let answerCount = 0;
+    const originalImpl = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile" && opts?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(savedProfile),
+        });
+      }
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (url === "/api/ai" && lastMsg?.content?.includes("Extract the company profile")) {
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing, pipes", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
+      }
+      if (url === "/api/ai") {
+        answerCount++;
+        if (answerCount >= answers.length) {
+          return Promise.resolve(makeSSEResponse("Profile looks complete! PROFILE_COMPLETE"));
+        }
+      }
+      return originalImpl(url, opts);
+    });
     for (const answer of answers) {
       const input = screen.getByRole("textbox");
       await act(async () => {
         fireEvent.change(input, { target: { value: answer } });
         fireEvent.keyDown(input, { key: "Enter" });
       });
-      // Advance timers for setTimeout delays
       await act(async () => {
         vi.advanceTimersByTime(700);
       });
     }
 
     await waitFor(() => {
+      // New user: should extract via Claude then POST to /api/profile
       expect(mockFetch).toHaveBeenCalledWith("/api/profile", expect.objectContaining({
         method: "POST",
-        headers: { "Content-Type": "application/json" },
       }));
+      expect(agent.setProfile).toHaveBeenCalledWith(savedProfile);
     });
   });
 
-  it("falls back to local profile when API fails", async () => {
-    mockFetch.mockRejectedValue(new Error("Network error"));
+  it("falls back to extraction when GET /api/profile fails", async () => {
+    // GET /api/profile fails, forcing fallback to Claude extraction
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile" && (!opts || !opts.method || opts.method === "GET")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      if (url === "/api/profile" && opts?.method === "POST") {
+        return Promise.reject(new Error("Network error"));
+      }
+      // /api/ai calls — return SSE responses; extraction returns JSON
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const lastMsg = body.messages?.[body.messages.length - 1];
+      if (lastMsg?.content?.includes("Extract the company profile")) {
+        const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing", keywords: ["plumbing"] });
+        return Promise.resolve(makeSSEResponse(profileJson));
+      }
+      return Promise.resolve(makeSSEResponse("Got it. Next question?"));
+    });
 
     const agent = makeAgentState({
       activeAgent: "profile",
@@ -180,7 +269,30 @@ describe("ProfileView — API wiring", () => {
       render(<ProfileView agent={agent} />);
     });
 
-    const answers = ["Acme Corp", "Ontario", "Plumbing", "500K, WSIB", "yes"];
+    const answers = ["Acme Corp", "Ontario", "Plumbing", "500K, WSIB"];
+    let answerCount2 = 0;
+    const originalImpl2 = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/profile" && (!opts || !opts.method || opts.method === "GET")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      if (url === "/api/profile" && opts?.method === "POST") {
+        return Promise.reject(new Error("Network error"));
+      }
+      if (url === "/api/ai") {
+        const body = opts?.body ? JSON.parse(opts.body) : {};
+        const lastMsg = body.messages?.[body.messages.length - 1];
+        if (lastMsg?.content?.includes("Extract the company profile")) {
+          const profileJson = JSON.stringify({ company_name: "Acme Corp", naics_codes: [], location: "Ontario", province: "Ontario", capabilities: "Plumbing", keywords: ["plumbing"] });
+          return Promise.resolve(makeSSEResponse(profileJson));
+        }
+        answerCount2++;
+        if (answerCount2 >= answers.length) {
+          return Promise.resolve(makeSSEResponse("Profile complete! PROFILE_COMPLETE"));
+        }
+      }
+      return originalImpl2(url, opts);
+    });
     for (const answer of answers) {
       const input = screen.getByRole("textbox");
       await act(async () => {
@@ -203,6 +315,20 @@ describe("ProfileView — API wiring", () => {
 
 describe("AnalystView — chat wiring", () => {
   it("renders chat input that is not disabled", async () => {
+    // Mock fetch to return analysis data so the component exits loading state
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        analysis: {
+          whatTheyWant: ["Item A"],
+          deadlines: [],
+          forms: [],
+          evaluation: [],
+          risks: [],
+        },
+      }),
+    });
+
     const { AnalystView } = await import("@/components/views/analyst-view");
     await act(async () => {
       render(<AnalystView agent={makeAgentState({ activeAgent: "analyst" })} />);

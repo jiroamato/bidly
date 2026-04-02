@@ -1,72 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { ChatInput } from "@/components/chat-input";
+import { useState, useEffect, useCallback } from "react";
+import { ChatPanel } from "@/components/chat-panel";
+import { MarkdownMessage } from "@/components/markdown-message";
+import { apiFetch } from "@/lib/api-fetch";
 import { AgentState } from "@/hooks/use-agent";
-import { useChat } from "@/hooks/use-chat";
 
 interface WriterViewProps {
   agent: AgentState;
+  externalValue?: string;
+  externalActiveSection?: SectionId;
 }
 
 type SectionId = "exec_summary" | "technical" | "team" | "project_mgmt" | "safety" | "pricing" | "forms" | "preview";
 type SectionStatus = "done" | "draft" | "empty";
 
-interface Section {
+interface SectionDef {
   id: SectionId;
   label: string;
-  status: SectionStatus;
   group: "sections" | "forms" | "export";
 }
 
-const SECTIONS: Section[] = [
-  { id: "exec_summary", label: "Executive Summary", status: "draft", group: "sections" },
-  { id: "technical", label: "Technical Approach", status: "done", group: "sections" },
-  { id: "team", label: "Team & Experience", status: "draft", group: "sections" },
-  { id: "project_mgmt", label: "Project Management", status: "empty", group: "sections" },
-  { id: "safety", label: "Safety Plan", status: "empty", group: "sections" },
-  { id: "pricing", label: "Pricing Schedule", status: "empty", group: "forms" },
-  { id: "forms", label: "Form Guidance", status: "empty", group: "forms" },
-  { id: "preview", label: "Preview Full Bid", status: "empty", group: "export" },
+const SECTION_DEFS: SectionDef[] = [
+  { id: "exec_summary", label: "Executive Summary", group: "sections" },
+  { id: "technical", label: "Technical Approach", group: "sections" },
+  { id: "team", label: "Team & Experience", group: "sections" },
+  { id: "project_mgmt", label: "Project Management", group: "sections" },
+  { id: "safety", label: "Safety Plan", group: "sections" },
+  { id: "pricing", label: "Pricing Schedule", group: "forms" },
+  { id: "forms", label: "Form Guidance", group: "forms" },
+  { id: "preview", label: "Preview Full Bid", group: "export" },
 ];
-
-const MOCK_CONTENT: Record<string, { blocks: { label: string; content: string; suggestion?: string }[]; pricing?: { items: { desc: string; amount: number }[]; province: string } }> = {
-  exec_summary: {
-    blocks: [
-      {
-        label: "Opening Statement",
-        content: "Amato Plumbing Inc. is pleased to submit this proposal for the Water Main Replacement project (PW-2026-0847) for the City of Toronto. With over 15 years of experience in municipal water infrastructure across Ontario, we are well-positioned to deliver this critical 2.4km water main replacement along Dundas Street West.",
-      },
-      {
-        label: "Company Qualifications",
-        content: "Our team has successfully completed comparable water main replacement projects for the Region of Peel, City of Mississauga, and York Region, consistently delivering on time and within budget. We maintain active WSIB coverage, carry full commercial liability insurance, and employ certified water distribution operators on all municipal projects.\n\nKey differentiators include our proprietary trenchless technology capability for service reconnections, which minimizes surface disruption and reduces road restoration costs by an estimated 15-20%.",
-        suggestion: "Consider adding specific project values and completion dates for your references \u2014 the evaluation criteria weights technical experience at 70%. I can pull this from your profile if you've added past projects.",
-      },
-    ],
-  },
-  technical: {
-    blocks: [
-      {
-        label: "Methodology",
-        content: "Our approach follows a phased methodology designed to minimize disruption to residents and businesses along the Dundas Street West corridor. Phase 1 involves detailed utility locating and pre-construction surveying. Phase 2 covers main installation using open-cut methods with trenchless service reconnections. Phase 3 addresses road restoration and final testing.",
-      },
-    ],
-  },
-  pricing: {
-    blocks: [],
-    pricing: {
-      items: [
-        { desc: "Mobilization & Site Setup", amount: 45000 },
-        { desc: "Water Main Installation (2.4km)", amount: 680000 },
-        { desc: "Service Reconnections (180 units)", amount: 270000 },
-        { desc: "Road Restoration & Paving", amount: 185000 },
-        { desc: "Traffic Management", amount: 65000 },
-        { desc: "Testing & Commissioning", amount: 35000 },
-      ],
-      province: "Ontario",
-    },
-  },
-};
 
 const STATUS_ICONS: Record<SectionStatus, { icon: string; color: string }> = {
   done: { icon: "\u2713", color: "var(--success)" },
@@ -74,18 +38,234 @@ const STATUS_ICONS: Record<SectionStatus, { icon: string; color: string }> = {
   empty: { icon: "\u25CB", color: "var(--text-hint)" },
 };
 
-export function WriterView({ agent }: WriterViewProps) {
-  const { sendMessage } = useChat("writer");
-  const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
-  const content = MOCK_CONTENT[activeSection];
-  const sectionConfig = SECTIONS.find((s) => s.id === activeSection)!;
-  const _tender = agent.selectedTender;
-  const _profile = agent.profile;
+// TODO: "done" status will be set when user explicitly approves a section
+function getSectionStatus(sectionId: string, draftSections: Record<string, string>): SectionStatus {
+  if (sectionId === "preview") {
+    // Preview is available if any section has content
+    const hasAnyContent = Object.values(draftSections).some((v) => v && v.trim().length > 0);
+    return hasAnyContent ? "draft" : "empty";
+  }
+  const content = draftSections[sectionId];
+  if (!content || content.trim().length === 0) return "empty";
+  return "draft";
+}
 
-  const subtotal = content?.pricing?.items.reduce((a, i) => a + i.amount, 0) || 0;
-  const hstRate = 0.13; // Ontario HST
-  const hst = Math.round(subtotal * hstRate);
-  const total = subtotal + hst;
+interface BidPreviewProps {
+  draftSections: Record<string, string>;
+  companyName?: string;
+  tenderTitle?: string;
+  tenderReference?: string;
+  closingDate?: string;
+}
+
+const PAGE_STYLE = {
+  width: 816,
+  minHeight: 1056,
+  background: "#fff",
+  boxShadow: "0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+  fontFamily: "'Times New Roman', 'Georgia', serif",
+  color: "#1a1a1a",
+  position: "relative" as const,
+};
+
+function BidPreview({ draftSections, companyName, tenderTitle, tenderReference, closingDate }: BidPreviewProps) {
+  const hasContent = Object.values(draftSections).some((v) => v && v.trim().length > 0);
+
+  if (!hasContent) {
+    return (
+      <div className="flex-1 overflow-y-auto flex items-center justify-center" style={{ background: "#e5e7eb" }}>
+        <div className="text-center">
+          <div
+            className="text-[12px] tracking-[2px] uppercase mb-2"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
+          >
+            No content to preview
+          </div>
+          <div className="text-[14px]" style={{ color: "var(--text-muted)" }}>
+            Draft some sections first, then preview the full bid here
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const today = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+
+  return (
+    <div className="flex-1 overflow-y-auto" style={{ background: "#e5e7eb" }}>
+      <div className="py-8 px-6 flex flex-col items-center gap-8">
+        {/* Cover Page */}
+        <div style={{ ...PAGE_STYLE, padding: 0, display: "flex", flexDirection: "column" }}>
+          {/* Top accent bar */}
+          <div style={{ height: 6, background: "#1a1a1a" }} />
+
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "72px 72px 48px 72px" }}>
+            {/* Document type */}
+            <div style={{ fontSize: 12, letterSpacing: "6px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 32 }}>
+              Bid Proposal
+            </div>
+
+            {/* Tender title */}
+            <h1 style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.3, marginBottom: 24, maxWidth: 560 }}>
+              {tenderTitle || "Government Tender"}
+            </h1>
+
+            {/* Reference number */}
+            {tenderReference && (
+              <div style={{ fontSize: 13, color: "#666", fontFamily: "Arial, sans-serif", marginBottom: 48 }}>
+                Reference: {tenderReference}
+              </div>
+            )}
+
+            {/* Divider */}
+            <div style={{ width: 64, height: 2, background: "#1a1a1a", marginBottom: 48 }} />
+
+            {/* Submitted by */}
+            <div style={{ fontSize: 11, letterSpacing: "3px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 8 }}>
+              Submitted By
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 32 }}>
+              {companyName || "Company Name"}
+            </div>
+
+            {/* Date info */}
+            <div style={{ display: "flex", gap: 48 }}>
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 4 }}>
+                  Date Submitted
+                </div>
+                <div style={{ fontSize: 14, fontFamily: "Arial, sans-serif" }}>{today}</div>
+              </div>
+              {closingDate && (
+                <div>
+                  <div style={{ fontSize: 10, letterSpacing: "2px", textTransform: "uppercase", color: "#999", fontFamily: "Arial, sans-serif", marginBottom: 4 }}>
+                    Closing Date
+                  </div>
+                  <div style={{ fontSize: 14, fontFamily: "Arial, sans-serif" }}>
+                    {new Date(closingDate).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom accent bar */}
+          <div style={{ height: 3, background: "#e5e7eb" }} />
+          <div style={{ padding: "16px 72px", borderTop: "1px solid #f0f0f0" }}>
+            <div style={{ fontSize: 9, color: "#bbb", fontFamily: "Arial, sans-serif", letterSpacing: "1px", textTransform: "uppercase" }}>
+              Confidential — For Evaluation Purposes Only
+            </div>
+          </div>
+        </div>
+
+        {/* Content Pages — one page per section */}
+        {SECTION_DEFS.filter((s) => s.id !== "preview" && draftSections[s.id]).map((section, idx) => (
+          <div key={section.id} style={{ ...PAGE_STYLE, padding: "72px 72px 48px 72px" }}>
+            <div style={{ fontSize: 10, color: "#aaa", fontFamily: "Arial, sans-serif", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 4 }}>
+              Section {idx + 1}
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, paddingBottom: 8, borderBottom: "1px solid #ddd" }}>
+              {section.label}
+            </h2>
+            <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+              <MarkdownMessage content={draftSections[section.id]} />
+            </div>
+            {/* Page footer */}
+            <div style={{ position: "absolute", bottom: 24, left: 72, right: 72, display: "flex", justifyContent: "space-between", fontSize: 9, color: "#bbb", fontFamily: "Arial, sans-serif" }}>
+              <span>{companyName || "Company Name"}</span>
+              <span>Page {idx + 2}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function WriterView({ agent, externalValue, externalActiveSection }: WriterViewProps) {
+  const [activeSection, setActiveSection] = useState<SectionId>("exec_summary");
+  const [draftSections, setDraftSections] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const profileId = agent.profile?.id;
+  const tenderId = agent.selectedTender?.id;
+
+  // Override active section from external source (e.g., demo script)
+  useEffect(() => {
+    if (externalActiveSection) {
+      setActiveSection(externalActiveSection);
+    }
+  }, [externalActiveSection]);
+
+  const refreshDrafts = useCallback(() => {
+    if (!profileId || !tenderId) return;
+    apiFetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.sections) {
+          setDraftSections(data.sections);
+        }
+      })
+      .catch((err) => { if (process.env.NODE_ENV !== 'production') console.warn('Failed to fetch drafts:', err); });
+  }, [profileId, tenderId]);
+
+  // Fetch existing drafts on mount
+  useEffect(() => {
+    if (!profileId || !tenderId) return;
+
+    setIsLoading(true);
+    apiFetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.sections) {
+          setDraftSections(data.sections);
+        }
+      })
+      .catch((err) => { if (process.env.NODE_ENV !== 'production') console.warn('Failed to fetch drafts:', err); })
+      .finally(() => setIsLoading(false));
+  }, [profileId, tenderId]);
+
+  const sectionConfig = SECTION_DEFS.find((s) => s.id === activeSection)!;
+  const sectionStatus = getSectionStatus(activeSection, draftSections);
+  const sectionContent = draftSections[activeSection] || "";
+
+  const isPreview = activeSection === "preview";
+
+  const sections = SECTION_DEFS.map((def) => ({
+    ...def,
+    status: getSectionStatus(def.id, draftSections),
+  }));
+
+  const handleSaveDraft = useCallback(async () => {
+    if (!profileId || !tenderId) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      const res = await apiFetch("/api/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile_id: profileId,
+          tender_id: tenderId,
+          sections: draftSections,
+        }),
+      });
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save draft";
+      setSaveError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [profileId, tenderId, draftSections]);
 
   return (
     <div className="flex flex-1 overflow-hidden h-full">
@@ -95,7 +275,7 @@ export function WriterView({ agent }: WriterViewProps) {
         style={{ background: "var(--sidebar-bg)", borderColor: "var(--bidly-border)" }}
       >
         {(["sections", "forms", "export"] as const).map((group) => {
-          const groupSections = SECTIONS.filter((s) => s.group === group);
+          const groupSections = sections.filter((s) => s.group === group);
           const groupLabels: Record<string, string> = { sections: "Bid Sections", forms: "Forms & Pricing", export: "Export" };
 
           return (
@@ -137,215 +317,144 @@ export function WriterView({ agent }: WriterViewProps) {
         })}
       </div>
 
-      {/* Editor Area */}
+      {/* Editor / Preview Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Toolbar */}
-        <div
-          className="px-8 py-4 flex items-center justify-between border-b flex-shrink-0"
-          style={{ background: "var(--white)", borderColor: "var(--bidly-border)" }}
-        >
-          <div
-            className="text-[14px] font-semibold"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}
-          >
-            {sectionConfig.label}
-          </div>
-          <div className="flex gap-2">
-            <button
-              className="px-4 py-2 text-[10px] tracking-[1px] uppercase border"
-              style={{
-                fontFamily: "var(--font-mono)",
-                borderColor: "var(--agent-writer)",
-                background: "var(--white)",
-                color: "var(--agent-writer)",
-                cursor: "pointer",
-              }}
+        {isPreview ? (
+          <BidPreview
+            draftSections={draftSections}
+            companyName={agent.profile?.company_name}
+            tenderTitle={agent.selectedTender?.title}
+            tenderReference={agent.selectedTender?.solicitation_number || agent.selectedTender?.reference_number}
+            closingDate={agent.selectedTender?.closing_date}
+          />
+        ) : (
+          <>
+            {/* Toolbar */}
+            <div
+              className="px-8 py-4 flex items-center justify-between border-b flex-shrink-0"
+              style={{ background: "var(--white)", borderColor: "var(--bidly-border)" }}
             >
-              Regenerate
-            </button>
-            <button
-              className="px-4 py-2 text-[10px] tracking-[1px] uppercase border"
-              style={{
-                fontFamily: "var(--font-mono)",
-                borderColor: "var(--bidly-border)",
-                background: "var(--white)",
-                color: "var(--text-secondary)",
-                cursor: "pointer",
-              }}
-            >
-              Copy
-            </button>
-            <button
-              className="px-4 py-2 text-[10px] tracking-[1px] uppercase"
-              style={{
-                fontFamily: "var(--font-mono)",
-                background: "var(--text-primary)",
-                color: "var(--white)",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Save Draft
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-8 py-6">
-          {content?.blocks.map((block, i) => (
-            <div key={i} className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className="text-[10px] font-medium tracking-[1.5px] uppercase"
-                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+              <div className="flex items-center gap-3">
+                <div
+                  className="text-[14px] font-semibold"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}
                 >
-                  {block.label}
-                </span>
+                  {sectionConfig.label}
+                </div>
                 <span
-                  className="text-[8px] tracking-[1px] uppercase px-2 py-0.5"
+                  className="text-[9px] tracking-[1.5px] uppercase px-2 py-0.5"
                   style={{
                     fontFamily: "var(--font-mono)",
-                    background: "#f0ecff",
-                    color: "var(--agent-writer)",
+                    background: sectionStatus === "empty" ? "var(--bg)" : "#f0ecff",
+                    color: sectionStatus === "empty" ? "var(--text-hint)" : "var(--agent-writer)",
                   }}
                 >
-                  AI Draft
+                  {sectionStatus}
                 </span>
               </div>
-              <div
-                className="border p-5 text-[14px] leading-relaxed whitespace-pre-wrap"
-                style={{
-                  background: "var(--white)",
-                  borderColor: "var(--bidly-border)",
-                  color: "var(--text-primary)",
-                  minHeight: 80,
-                }}
-              >
-                {block.content}
-              </div>
-              {block.suggestion && (
-                <div
-                  className="mt-2 border-l-2 pl-4 py-2"
-                  style={{ borderColor: "var(--agent-writer)" }}
+              <div className="flex gap-2">
+                <button
+                  className="px-4 py-2 text-[10px] tracking-[1px] uppercase border"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    borderColor: "var(--bidly-border)",
+                    background: "var(--white)",
+                    color: "var(--text-secondary)",
+                    cursor: "pointer",
+                  }}
                 >
-                  <div
-                    className="text-[9px] tracking-[1.5px] uppercase mb-1"
-                    style={{ fontFamily: "var(--font-mono)", color: "var(--agent-writer)" }}
+                  Copy
+                </button>
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={isSaving}
+                  className="px-4 py-2 text-[10px] tracking-[1px] uppercase"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    background: saveSuccess ? "var(--success, #16a34a)" : "var(--text-primary)",
+                    color: "var(--white)",
+                    border: "none",
+                    cursor: isSaving ? "not-allowed" : "pointer",
+                    opacity: isSaving ? 0.6 : 1,
+                  }}
+                >
+                  {isSaving ? "Saving..." : saveSuccess ? "Saved" : "Save Draft"}
+                </button>
+                {saveError && (
+                  <span
+                    className="text-[10px] self-center"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--destructive, #dc2626)" }}
                   >
-                    Writer Suggestion
+                    {saveError}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              {isLoading ? (
+                <div className="text-center py-16">
+                  <div
+                    className="text-[12px] tracking-[2px] uppercase mb-2"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
+                  >
+                    Loading draft...
                   </div>
-                  <div className="text-[13px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    {block.suggestion}
+                </div>
+              ) : sectionContent ? (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="text-[10px] font-medium tracking-[1.5px] uppercase"
+                      style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                    >
+                      {sectionConfig.label}
+                    </span>
+                    <span
+                      className="text-[8px] tracking-[1px] uppercase px-2 py-0.5"
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        background: "#f0ecff",
+                        color: "var(--agent-writer)",
+                      }}
+                    >
+                      AI Draft
+                    </span>
+                  </div>
+                  <div
+                    className="border p-5 text-[14px] leading-relaxed"
+                    style={{
+                      background: "var(--white)",
+                      borderColor: "var(--bidly-border)",
+                      color: "var(--text-primary)",
+                      minHeight: 80,
+                    }}
+                  >
+                    <MarkdownMessage content={sectionContent} />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div
+                    className="text-[12px] tracking-[2px] uppercase mb-2"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
+                  >
+                    No content yet
+                  </div>
+                  <div className="text-[14px]" style={{ color: "var(--text-muted)" }}>
+                    Use the chat below to have the Writer agent draft this section
                   </div>
                 </div>
               )}
             </div>
-          ))}
 
-          {/* Pricing Table */}
-          {content?.pricing && (
-            <div className="mt-4">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th
-                      className="text-left px-4 py-2.5 border-b-2"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 10,
-                        letterSpacing: "1.5px",
-                        textTransform: "uppercase",
-                        color: "var(--text-muted)",
-                        borderColor: "var(--bidly-border)",
-                      }}
-                    >
-                      Item
-                    </th>
-                    <th
-                      className="text-right px-4 py-2.5 border-b-2"
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 10,
-                        letterSpacing: "1.5px",
-                        textTransform: "uppercase",
-                        color: "var(--text-muted)",
-                        borderColor: "var(--bidly-border)",
-                      }}
-                    >
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {content.pricing.items.map((item, i) => (
-                    <tr key={i}>
-                      <td
-                        className="px-4 py-2.5 text-[13px] border-b"
-                        style={{ color: "var(--text-primary)", borderColor: "var(--border-light)" }}
-                      >
-                        {item.desc}
-                      </td>
-                      <td
-                        className="px-4 py-2.5 text-right text-[13px] border-b"
-                        style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)", borderColor: "var(--border-light)" }}
-                      >
-                        ${item.amount.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td className="px-4 py-2.5 text-[13px]" style={{ color: "var(--text-muted)" }}>Subtotal</td>
-                    <td className="px-4 py-2.5 text-right text-[13px]" style={{ fontFamily: "var(--font-mono)" }}>
-                      ${subtotal.toLocaleString()}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2.5 text-[13px]" style={{ color: "var(--text-muted)" }}>HST (13%)</td>
-                    <td className="px-4 py-2.5 text-right text-[13px]" style={{ fontFamily: "var(--font-mono)" }}>
-                      ${hst.toLocaleString()}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td
-                      className="px-4 py-2.5 text-[14px] font-semibold border-t-2"
-                      style={{ color: "var(--text-primary)", borderColor: "var(--bidly-border)" }}
-                    >
-                      Total
-                    </td>
-                    <td
-                      className="px-4 py-2.5 text-right text-[14px] font-semibold border-t-2"
-                      style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)", borderColor: "var(--bidly-border)" }}
-                    >
-                      ${total.toLocaleString()}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+            {/* Chat Panel */}
+            <div className="flex-shrink-0">
+              <ChatPanel agentId="writer" selectedTender={agent.selectedTender} profile={agent.profile} externalValue={externalValue} onResponseComplete={refreshDrafts} />
             </div>
-          )}
-
-          {/* Empty state */}
-          {!content && (
-            <div className="text-center py-16">
-              <div
-                className="text-[12px] tracking-[2px] uppercase mb-2"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
-              >
-                No content yet
-              </div>
-              <div className="text-[14px]" style={{ color: "var(--text-muted)" }}>
-                Click &ldquo;Regenerate&rdquo; to have the Writer agent draft this section
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chat Input */}
-        <div className="flex-shrink-0">
-          <ChatInput agentId="writer" onSend={sendMessage} />
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
