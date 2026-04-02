@@ -110,11 +110,11 @@ openTenderNotice-ouvertAvisAppelOffres.csv
 
 ### 5. Set up the database
 
-Run all 3 migrations in order in your Supabase SQL Editor:
+Run the schema migration in your Supabase SQL Editor:
 
-1. `supabase/migrations/001_initial_schema.sql`
-2. `supabase/migrations/002_working_mvp_schema.sql`
-3. `supabase/migrations/003_matching_improvements.sql`
+```
+supabase/migrations/001_schema.sql
+```
 
 ### 6. Seed tender data
 
@@ -163,7 +163,7 @@ src/
 │   └── matching/     — Tender matching (BM25, category, keyword, location scorers)
 ├── middleware.ts     — API key gate for /api/* routes
 scripts/              — Data pipeline (CSV seeding)
-supabase/migrations/  — Database schema (3 migrations)
+supabase/migrations/  — Database schema
 ```
 
 ## Contributors
