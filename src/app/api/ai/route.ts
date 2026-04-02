@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = getSystemPrompt(agentId, contextString);
 
     // Convert ChatMessages to Anthropic format
-    const anthropicMessages = messages.map((m) => ({
+    const anthropicMessages: Anthropic.MessageParam[] = messages.map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     }));
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          let loopMessages = [...anthropicMessages];
+          let loopMessages: Anthropic.MessageParam[] = [...anthropicMessages];
           let iterations = 0;
           let calledSaveDraft = false;
 

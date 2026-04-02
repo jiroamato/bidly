@@ -13,7 +13,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 async function main() {
   console.log("Reading CSV...");
   const raw = fs.readFileSync(CSV_PATH, "utf-8");
-  const records = parse(raw, { columns: true, skip_empty_lines: true, bom: true });
+  const records = parse(raw, { columns: true, skip_empty_lines: true, bom: true }) as Record<string, string>[];
   console.log(`Parsed ${records.length} rows`);
 
   const filtered = filterTenders(records);
