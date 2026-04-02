@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/chat-panel";
 import { AgentState } from "@/hooks/use-agent";
+import { apiFetch } from "@/lib/api-fetch";
 import { TenderAnalysisData } from "@/lib/types";
 
 interface AnalystViewProps {
@@ -30,7 +31,7 @@ export function AnalystView({ agent, externalValue }: AnalystViewProps) {
     const profileId = agent.profile?.id;
 
     const doAiCall = () => {
-      fetch("/api/analyze-tender", {
+      apiFetch("/api/analyze-tender", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tender, profileId }),
@@ -58,7 +59,7 @@ export function AnalystView({ agent, externalValue }: AnalystViewProps) {
       return () => { cancelled = true; };
     }
 
-    fetch(`/api/analyze-tender?profile_id=${profileId}&tender_id=${tender.id}`)
+    apiFetch(`/api/analyze-tender?profile_id=${profileId}&tender_id=${tender.id}`)
       .then((res) => {
         if (!res.ok) throw new Error("cache-miss");
         return res.json();
@@ -174,7 +175,7 @@ export function AnalystView({ agent, externalValue }: AnalystViewProps) {
               onClick={() => {
                 setError(null);
                 setLoading(true);
-                fetch("/api/analyze-tender", {
+                apiFetch("/api/analyze-tender", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ tender, profileId: agent.profile?.id }),

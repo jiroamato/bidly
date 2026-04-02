@@ -90,7 +90,7 @@ Return the structured compliance JSON.`,
   } catch (error: any) {
     console.error("Compliance check error:", error);
     return NextResponse.json(
-      { error: error.message || "Compliance check failed" },
+      { error: "Compliance check failed" },
       { status: 500 }
     );
   }

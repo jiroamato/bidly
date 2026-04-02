@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useAgent } from "@/hooks/use-agent";
 import { useDemoScript } from "@/hooks/use-demo-script";
+import { apiFetch } from "@/lib/api-fetch";
 import { ChatHistoryProvider, useChatHistoryActions } from "@/contexts/chat-history-context";
 import { Sidebar } from "@/components/sidebar";
 import { MainHeader } from "@/components/main-header";
-import { ProfileView } from "@/components/views/profile-view";
-import { ScoutView } from "@/components/views/scout-view";
-import { AnalystView } from "@/components/views/analyst-view";
-import { ComplianceView } from "@/components/views/compliance-view";
-import { WriterView } from "@/components/views/writer-view";
+
+const ProfileView = dynamic(() => import("@/components/views/profile-view").then(m => ({ default: m.ProfileView })));
+const ScoutView = dynamic(() => import("@/components/views/scout-view").then(m => ({ default: m.ScoutView })));
+const AnalystView = dynamic(() => import("@/components/views/analyst-view").then(m => ({ default: m.AnalystView })));
+const ComplianceView = dynamic(() => import("@/components/views/compliance-view").then(m => ({ default: m.ComplianceView })));
+const WriterView = dynamic(() => import("@/components/views/writer-view").then(m => ({ default: m.WriterView })));
 
 function HomeContent() {
   const agent = useAgent();
@@ -53,7 +56,9 @@ function HomeContent() {
 
   const handleDemoReset = useCallback(async () => {
     try {
-      await fetch("/api/profile", { method: "DELETE" });
+      if (agent.profileId) {
+        await apiFetch(`/api/profile?id=${agent.profileId}`, { method: "DELETE" });
+      }
     } catch {
       // Server delete failed — still reset client state
     }
@@ -105,14 +110,6 @@ function HomeContent() {
     return () => window.removeEventListener("bidly:response-complete", onResponseComplete);
   }, [autoDemo]);
 
-  const views = {
-    profile: <ProfileView agent={agent} externalValue={demoInputValue} />,
-    scout: <ScoutView agent={agent} externalValue={demoInputValue} />,
-    analyst: <AnalystView agent={agent} externalValue={demoInputValue} />,
-    compliance: <ComplianceView agent={agent} externalValue={demoInputValue} />,
-    writer: <WriterView agent={agent} externalValue={demoInputValue} externalActiveSection={writerPreviewSection} />,
-  };
-
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
@@ -128,7 +125,11 @@ function HomeContent() {
           onToggleAutoDemo={() => setAutoDemo((prev) => !prev)}
         />
         <div className="flex-1 flex flex-col min-h-0">
-          {views[agent.activeAgent]}
+          {agent.activeAgent === "profile" && <ProfileView agent={agent} externalValue={demoInputValue} />}
+          {agent.activeAgent === "scout" && <ScoutView agent={agent} externalValue={demoInputValue} />}
+          {agent.activeAgent === "analyst" && <AnalystView agent={agent} externalValue={demoInputValue} />}
+          {agent.activeAgent === "compliance" && <ComplianceView agent={agent} externalValue={demoInputValue} />}
+          {agent.activeAgent === "writer" && <WriterView agent={agent} externalValue={demoInputValue} externalActiveSection={writerPreviewSection} />}
         </div>
       </div>
     </div>

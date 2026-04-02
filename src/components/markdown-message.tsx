@@ -35,168 +35,172 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+const REMARK_PLUGINS = [remarkGfm];
+
+const MD_COMPONENTS = {
+  h1: ({ children, ...props }: ComponentPropsWithoutRef<"h2"> & { children?: React.ReactNode }) => (
+    <h2
+      className="text-base font-semibold mt-4 mb-2"
+      style={{ color: "var(--text-primary)" }}
+      {...props}
+    >
+      {children}
+    </h2>
+  ),
+  h2: ({ children, ...props }: ComponentPropsWithoutRef<"h2"> & { children?: React.ReactNode }) => (
+    <h2
+      className="text-base font-semibold mt-4 mb-2"
+      style={{ color: "var(--text-primary)" }}
+      {...props}
+    >
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }: ComponentPropsWithoutRef<"h3"> & { children?: React.ReactNode }) => (
+    <h3
+      className="text-sm font-semibold mt-3 mb-1.5"
+      style={{ color: "var(--text-primary)" }}
+      {...props}
+    >
+      {children}
+    </h3>
+  ),
+  p: ({ children, ...props }: ComponentPropsWithoutRef<"p"> & { children?: React.ReactNode }) => (
+    <p
+      className="mb-3 leading-[1.7]"
+      {...props}
+    >
+      {children}
+    </p>
+  ),
+  ul: ({ children, ...props }: ComponentPropsWithoutRef<"ul"> & { children?: React.ReactNode }) => (
+    <ul
+      className="mb-3 ml-4 list-disc space-y-1"
+      {...props}
+    >
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }: ComponentPropsWithoutRef<"ol"> & { children?: React.ReactNode }) => (
+    <ol
+      className="mb-3 ml-4 list-decimal space-y-1"
+      {...props}
+    >
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }: ComponentPropsWithoutRef<"li"> & { children?: React.ReactNode }) => (
+    <li
+      className="leading-[1.6]"
+      {...props}
+    >
+      {children}
+    </li>
+  ),
+  code: ({ children, className, ...props }: ComponentPropsWithoutRef<"code"> & { children?: React.ReactNode }) => {
+    const isCodeBlock = className?.includes("language-");
+    if (isCodeBlock) {
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code
+        className="px-1.5 py-0.5 rounded text-[12px]"
+        style={{
+          fontFamily: "var(--font-mono)",
+          background: "var(--sidebar-bg, #f8f8f8)",
+          color: "var(--text-primary)",
+        }}
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children, ...props }: ComponentPropsWithoutRef<"pre"> & { children?: any }) => {
+    const codeElement = children?.props;
+    const codeText = typeof codeElement?.children === "string"
+      ? codeElement.children
+      : String(codeElement?.children || "");
+
+    return (
+      <div className="relative mb-3">
+        <pre
+          className="p-4 rounded overflow-x-auto text-[12px] leading-[1.6]"
+          style={{
+            fontFamily: "var(--font-mono)",
+            background: "var(--sidebar-bg, #f8f8f8)",
+            border: "1px solid var(--border-light, #e0e0e0)",
+          }}
+          {...props}
+        >
+          {children}
+        </pre>
+        <CopyButton text={codeText.replace(/\n$/, "")} />
+      </div>
+    );
+  },
+  table: ({ children, ...props }: ComponentPropsWithoutRef<"table"> & { children?: React.ReactNode }) => (
+    <div className="mb-3 overflow-x-auto">
+      <table
+        className="w-full text-[12px]"
+        style={{ borderCollapse: "collapse" }}
+        {...props}
+      >
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children, ...props }: ComponentPropsWithoutRef<"th"> & { children?: React.ReactNode }) => (
+    <th
+      className="text-left px-3 py-2 font-semibold"
+      style={{
+        borderBottom: "2px solid var(--bidly-border, #e0e0e0)",
+        fontFamily: "var(--font-mono)",
+      }}
+      {...props}
+    >
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }: ComponentPropsWithoutRef<"td"> & { children?: React.ReactNode }) => (
+    <td
+      className="px-3 py-2"
+      style={{
+        borderBottom: "1px solid var(--border-light, #e0e0e0)",
+      }}
+      {...props}
+    >
+      {children}
+    </td>
+  ),
+  strong: ({ children, ...props }: ComponentPropsWithoutRef<"strong"> & { children?: React.ReactNode }) => (
+    <strong
+      className="font-semibold"
+      style={{ color: "var(--text-primary)" }}
+      {...props}
+    >
+      {children}
+    </strong>
+  ),
+  hr: (props: ComponentPropsWithoutRef<"hr">) => (
+    <hr
+      className="my-4"
+      style={{ borderColor: "var(--border-light, #e0e0e0)" }}
+      {...props}
+    />
+  ),
+};
+
 export function MarkdownMessage({ content, isStreaming = false }: MarkdownMessageProps) {
   return (
     <div className="markdown-message">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: ({ children, ...props }) => (
-            <h2
-              className="text-base font-semibold mt-4 mb-2"
-              style={{ color: "var(--text-primary)" }}
-              {...(props as ComponentPropsWithoutRef<"h2">)}
-            >
-              {children}
-            </h2>
-          ),
-          h2: ({ children, ...props }) => (
-            <h2
-              className="text-base font-semibold mt-4 mb-2"
-              style={{ color: "var(--text-primary)" }}
-              {...(props as ComponentPropsWithoutRef<"h2">)}
-            >
-              {children}
-            </h2>
-          ),
-          h3: ({ children, ...props }) => (
-            <h3
-              className="text-sm font-semibold mt-3 mb-1.5"
-              style={{ color: "var(--text-primary)" }}
-              {...(props as ComponentPropsWithoutRef<"h3">)}
-            >
-              {children}
-            </h3>
-          ),
-          p: ({ children, ...props }) => (
-            <p
-              className="mb-3 leading-[1.7]"
-              {...(props as ComponentPropsWithoutRef<"p">)}
-            >
-              {children}
-            </p>
-          ),
-          ul: ({ children, ...props }) => (
-            <ul
-              className="mb-3 ml-4 list-disc space-y-1"
-              {...(props as ComponentPropsWithoutRef<"ul">)}
-            >
-              {children}
-            </ul>
-          ),
-          ol: ({ children, ...props }) => (
-            <ol
-              className="mb-3 ml-4 list-decimal space-y-1"
-              {...(props as ComponentPropsWithoutRef<"ol">)}
-            >
-              {children}
-            </ol>
-          ),
-          li: ({ children, ...props }) => (
-            <li
-              className="leading-[1.6]"
-              {...(props as ComponentPropsWithoutRef<"li">)}
-            >
-              {children}
-            </li>
-          ),
-          code: ({ children, className, ...props }) => {
-            const isCodeBlock = className?.includes("language-");
-            if (isCodeBlock) {
-              return (
-                <code className={className} {...(props as ComponentPropsWithoutRef<"code">)}>
-                  {children}
-                </code>
-              );
-            }
-            return (
-              <code
-                className="px-1.5 py-0.5 rounded text-[12px]"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  background: "var(--sidebar-bg, #f8f8f8)",
-                  color: "var(--text-primary)",
-                }}
-                {...(props as ComponentPropsWithoutRef<"code">)}
-              >
-                {children}
-              </code>
-            );
-          },
-          pre: ({ children, ...props }) => {
-            const codeElement = (children as any)?.props;
-            const codeText = typeof codeElement?.children === "string"
-              ? codeElement.children
-              : String(codeElement?.children || "");
-
-            return (
-              <div className="relative mb-3">
-                <pre
-                  className="p-4 rounded overflow-x-auto text-[12px] leading-[1.6]"
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    background: "var(--sidebar-bg, #f8f8f8)",
-                    border: "1px solid var(--border-light, #e0e0e0)",
-                  }}
-                  {...(props as ComponentPropsWithoutRef<"pre">)}
-                >
-                  {children}
-                </pre>
-                <CopyButton text={codeText.replace(/\n$/, "")} />
-              </div>
-            );
-          },
-          table: ({ children, ...props }) => (
-            <div className="mb-3 overflow-x-auto">
-              <table
-                className="w-full text-[12px]"
-                style={{ borderCollapse: "collapse" }}
-                {...(props as ComponentPropsWithoutRef<"table">)}
-              >
-                {children}
-              </table>
-            </div>
-          ),
-          th: ({ children, ...props }) => (
-            <th
-              className="text-left px-3 py-2 font-semibold"
-              style={{
-                borderBottom: "2px solid var(--bidly-border, #e0e0e0)",
-                fontFamily: "var(--font-mono)",
-              }}
-              {...(props as ComponentPropsWithoutRef<"th">)}
-            >
-              {children}
-            </th>
-          ),
-          td: ({ children, ...props }) => (
-            <td
-              className="px-3 py-2"
-              style={{
-                borderBottom: "1px solid var(--border-light, #e0e0e0)",
-              }}
-              {...(props as ComponentPropsWithoutRef<"td">)}
-            >
-              {children}
-            </td>
-          ),
-          strong: ({ children, ...props }) => (
-            <strong
-              className="font-semibold"
-              style={{ color: "var(--text-primary)" }}
-              {...(props as ComponentPropsWithoutRef<"strong">)}
-            >
-              {children}
-            </strong>
-          ),
-          hr: (props) => (
-            <hr
-              className="my-4"
-              style={{ borderColor: "var(--border-light, #e0e0e0)" }}
-              {...(props as ComponentPropsWithoutRef<"hr">)}
-            />
-          ),
-        }}
+        remarkPlugins={REMARK_PLUGINS}
+        components={MD_COMPONENTS}
       >
         {content}
       </ReactMarkdown>
