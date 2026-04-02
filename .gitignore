@@ -42,6 +42,7 @@ coverage/
 # Misc
 *.pem
 *.csv
+tmp_*.json
 
 # Project-specific: AI agent artifacts
 .claude/
