@@ -189,6 +189,7 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const profileId = agent.profile?.id;
   const tenderId = agent.selectedTender?.id;
@@ -238,6 +239,25 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
     ...def,
     status: getSectionStatus(def.id, draftSections),
   }));
+
+  const handleCopy = useCallback(async () => {
+    if (!sectionContent) return;
+    try {
+      await navigator.clipboard.writeText(sectionContent);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = sectionContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  }, [sectionContent]);
 
   const handleSaveDraft = useCallback(async () => {
     if (!profileId || !tenderId) return;
@@ -354,16 +374,19 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
               </div>
               <div className="flex gap-2">
                 <button
+                  onClick={handleCopy}
                   className="px-4 py-2 text-[10px] tracking-[1px] uppercase border"
                   style={{
                     fontFamily: "var(--font-mono)",
                     borderColor: "var(--bidly-border)",
-                    background: "var(--white)",
-                    color: "var(--text-secondary)",
-                    cursor: "pointer",
+                    background: copySuccess ? "var(--success, #16a34a)" : "var(--white)",
+                    color: copySuccess ? "var(--white)" : "var(--text-secondary)",
+                    cursor: sectionContent ? "pointer" : "not-allowed",
+                    opacity: sectionContent ? 1 : 0.5,
                   }}
+                  disabled={!sectionContent}
                 >
-                  Copy
+                  {copySuccess ? "Copied" : "Copy"}
                 </button>
                 <button
                   onClick={handleSaveDraft}
