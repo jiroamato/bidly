@@ -171,7 +171,7 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
           className="mt-3 text-[9px] tracking-wide"
           style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
         >
-          Bidly v1.0
+          Bidly v1.0.0
           <br />&copy; 2026 Hackathon Build
         </div>
       </div>
