@@ -10,6 +10,7 @@ out/
 build/
 dist/
 *.tsbuildinfo
+next-env.d.ts
 
 # Environment variables
 .env
@@ -42,12 +43,14 @@ coverage/
 # Misc
 *.pem
 *.csv
+tmp_*.json
 
 # Project-specific: AI agent artifacts
 .claude/
 .superpowers/
 AGENTS.md
 CLAUDE.md
+TECH_DEBT.md
 docs/superpowers/
 research/
 *.png
