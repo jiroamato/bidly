@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage } from "@/lib/types";
+import { apiFetch } from "@/lib/api-fetch";
 import { AgentState } from "@/hooks/use-agent";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { consumeSSEStream } from "@/lib/sse";
@@ -111,7 +112,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
       setIsGenerating(true);
 
       try {
-        const res = await fetch("/api/check-compliance", {
+        const res = await apiFetch("/api/check-compliance", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -151,7 +152,7 @@ export function ComplianceView({ agent, externalValue }: ComplianceViewProps) {
       setIsTyping(true);
 
       try {
-        const res = await fetch("/api/ai", {
+        const res = await apiFetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

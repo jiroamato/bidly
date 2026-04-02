@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { AgentId, ChatMessage } from "@/lib/types";
+import { apiFetch } from "@/lib/api-fetch";
 
 export function useChat(
   agentId: AgentId,
@@ -29,7 +30,7 @@ export function useChat(
       setIsLoading(true);
 
       try {
-        const response = await fetch("/api/ai", {
+        const response = await apiFetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ agentId, messages: updatedMessages, profileId, tenderId }),

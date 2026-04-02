@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useAgent } from "@/hooks/use-agent";
 import { useDemoScript } from "@/hooks/use-demo-script";
+import { apiFetch } from "@/lib/api-fetch";
 import { ChatHistoryProvider, useChatHistoryActions } from "@/contexts/chat-history-context";
 import { Sidebar } from "@/components/sidebar";
 import { MainHeader } from "@/components/main-header";
@@ -54,7 +55,7 @@ function HomeContent() {
   const handleDemoReset = useCallback(async () => {
     try {
       if (agent.profileId) {
-        await fetch(`/api/profile?id=${agent.profileId}`, { method: "DELETE" });
+        await apiFetch(`/api/profile?id=${agent.profileId}`, { method: "DELETE" });
       }
     } catch {
       // Server delete failed — still reset client state

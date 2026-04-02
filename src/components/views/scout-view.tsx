@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Tender, TenderWithScore } from "@/lib/types";
 import { ChatPanel } from "@/components/chat-panel";
+import { apiFetch } from "@/lib/api-fetch";
 import { AgentState } from "@/hooks/use-agent";
 
 interface ScoutViewProps {
@@ -25,7 +26,7 @@ export function ScoutView({ agent, externalValue }: ScoutViewProps) {
     if (!profileId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/tenders/match?profileId=${profileId}`);
+      const res = await apiFetch(`/api/tenders/match?profileId=${profileId}`);
       if (!res.ok) throw new Error("Failed to load tenders");
       const data: Tender[] = await res.json();
       // Use match_score from the API if available, default to 0

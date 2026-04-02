@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage, BusinessProfile } from "@/lib/types";
+import { apiFetch } from "@/lib/api-fetch";
 import { useChatHistory } from "@/contexts/chat-history-context";
 import { AgentState } from "@/hooks/use-agent";
 import { consumeSSEStream } from "@/lib/sse";
@@ -428,7 +429,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/profile", {
+        const res = await apiFetch("/api/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ company_name: "" }),
@@ -480,7 +481,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
   const saveProfile = useCallback(
     async (payload: Record<string, unknown>) => {
       try {
-        const res = await fetch("/api/profile", {
+        const res = await apiFetch("/api/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -537,7 +538,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
       setIsTyping(true);
 
       try {
-        const res = await fetch("/api/ai", {
+        const res = await apiFetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -634,7 +635,7 @@ export function ProfileView({ agent, externalValue }: ProfileViewProps) {
 
   const extractAndSaveProfile = async (conversation: ChatMessage[]) => {
     try {
-      const res = await fetch("/api/ai", {
+      const res = await apiFetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChatPanel } from "@/components/chat-panel";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { apiFetch } from "@/lib/api-fetch";
 import { AgentState } from "@/hooks/use-agent";
 
 interface WriterViewProps {
@@ -201,7 +202,7 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
 
   const refreshDrafts = useCallback(() => {
     if (!profileId || !tenderId) return;
-    fetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
+    apiFetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.sections) {
@@ -216,7 +217,7 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
     if (!profileId || !tenderId) return;
 
     setIsLoading(true);
-    fetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
+    apiFetch(`/api/drafts?profile_id=${profileId}&tender_id=${tenderId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.sections) {
@@ -246,7 +247,7 @@ export function WriterView({ agent, externalValue, externalActiveSection }: Writ
     setSaveSuccess(false);
 
     try {
-      const res = await fetch("/api/drafts", {
+      const res = await apiFetch("/api/drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
