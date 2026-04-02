@@ -102,13 +102,14 @@ main
 
 ## Developer Setup
 
+Ready to contribute? Here's how to set up bidly for
+local development.
+
 ### Prerequisite
 
 - Node.js 18+
 - A Supabase project
 - API keys: [Anthropic](https://console.anthropic.com/)
-Ready to contribute? Here's how to set up bidly for
-local development.
 
 1. Clone your fork locally (*if you want to work locally*)
 
