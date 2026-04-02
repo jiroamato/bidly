@@ -49,6 +49,7 @@ tmp_*.json
 .superpowers/
 AGENTS.md
 CLAUDE.md
+TECH_DEBT.md
 docs/superpowers/
 research/
 *.png
