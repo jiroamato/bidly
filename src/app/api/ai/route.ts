@@ -229,8 +229,9 @@ export async function POST(request: NextRequest) {
             forceSaveDraftIfNeeded(allText, finalMessages, systemPrompt, tools, profileId, tenderId);
           }
         } catch (err: any) {
+          console.error("AI stream error:", err);
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: err.message })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ error: "AI request failed" })}\n\n`)
           );
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
@@ -247,7 +248,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("AI route error:", error);
     return NextResponse.json(
-      { error: error.message || "AI request failed" },
+      { error: "AI request failed" },
       { status: 500 }
     );
   }

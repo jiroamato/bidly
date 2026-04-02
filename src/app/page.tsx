@@ -53,7 +53,9 @@ function HomeContent() {
 
   const handleDemoReset = useCallback(async () => {
     try {
-      await fetch("/api/profile", { method: "DELETE" });
+      if (agent.profileId) {
+        await fetch(`/api/profile?id=${agent.profileId}`, { method: "DELETE" });
+      }
     } catch {
       // Server delete failed — still reset client state
     }

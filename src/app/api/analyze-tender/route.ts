@@ -32,8 +32,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ analysis: data.analysis });
   } catch (err: any) {
+    console.error("Analyze tender lookup error:", err);
     return NextResponse.json(
-      { error: err.message || "Lookup failed" },
+      { error: "Lookup failed" },
       { status: 500 },
     );
   }
@@ -147,7 +148,7 @@ Rules:
   } catch (error: any) {
     console.error("Analyze tender error:", error);
     return NextResponse.json(
-      { error: error.message || "Analysis failed" },
+      { error: "Analysis failed" },
       { status: 500 }
     );
   }

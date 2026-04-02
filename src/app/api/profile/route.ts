@@ -14,8 +14,33 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await query.single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+  if (error) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   return NextResponse.json(data);
+}
+
+// Allowlisted fields for business_profiles writes
+const PROFILE_ALLOWED_FIELDS = [
+  "company_name",
+  "industry",
+  "location",
+  "province",
+  "capabilities",
+  "keywords",
+  "insurance_amount",
+  "certifications",
+  "years_in_business",
+  "past_gov_experience",
+  "bonding_capacity",
+  "security_clearance",
+  "num_employees",
+] as const;
+
+function pickAllowedFields(body: Record<string, unknown>) {
+  const cleaned: Record<string, unknown> = {};
+  for (const key of PROFILE_ALLOWED_FIELDS) {
+    if (key in body) cleaned[key] = body[key];
+  }
+  return cleaned;
 }
 
 export async function POST(request: NextRequest) {
@@ -26,20 +51,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  const allowed = pickAllowedFields(body);
+
   const supabase = createServerClient();
 
   // Ensure keywords are populated — fall back to extracting from capabilities
-  if ((!body.keywords || body.keywords.length === 0) && body.capabilities) {
-    body.keywords = extractKeywordsFromCapabilities(body.capabilities);
+  if ((!allowed.keywords || (allowed.keywords as string[]).length === 0) && allowed.capabilities) {
+    allowed.keywords = extractKeywordsFromCapabilities(allowed.capabilities as string);
   }
 
   const { data, error } = await supabase
     .from("business_profiles")
-    .insert(body)
+    .insert(allowed)
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return NextResponse.json({ error: "Failed to create profile" }, { status: 400 });
 
   // Embed capabilities text for semantic matching
   if (data.capabilities && process.env.VOYAGE_API_KEY) {
@@ -59,10 +86,15 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(data);
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const id = request.nextUrl.searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "id query parameter is required" }, { status: 400 });
+  }
+
   const supabase = createServerClient();
-  const { error } = await supabase.from("business_profiles").delete().neq("id", 0);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { error } = await supabase.from("business_profiles").delete().eq("id", Number(id));
+  if (error) return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 
@@ -74,10 +106,12 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { id, ...updates } = body;
+  const { id, ...raw } = body;
   if (id === undefined) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
+
+  const updates = pickAllowedFields(raw);
 
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -87,7 +121,7 @@ export async function PUT(request: NextRequest) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return NextResponse.json({ error: "Failed to update profile" }, { status: 400 });
 
   // Re-embed if capabilities changed
   if (updates.capabilities && process.env.VOYAGE_API_KEY) {
