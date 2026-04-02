@@ -154,8 +154,9 @@ export function Sidebar({ activeAgent, statuses, profile, onAgentClick }: Sideba
           className="mt-4 text-[9px] leading-[1.6] tracking-wide"
           style={{ fontFamily: "var(--font-mono)", color: "var(--text-hint)" }}
         >
-          <strong style={{ color: "var(--text-muted)" }}>Proof of concept only.</strong> All
-          generated content is fictional. Real procurement involves document
+          <strong style={{ color: "var(--text-muted)" }}>Proof of concept only.</strong>
+          <br />
+          All generated content is fictional. Real procurement involves document
           processing and additional steps not shown here &mdash; this demo
           illustrates how AI agents can integrate into the bidding workflow.
         </div>
