@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { AgentId, AgentStatus, BusinessProfile, Tender, TenderWithScore, TenderAnalysisData } from "@/lib/types";
 import { AGENT_ORDER } from "@/lib/agents";
 
@@ -33,9 +33,7 @@ const INITIAL_STATUSES: Record<AgentId, AgentStatus> = {
 export function useAgent(): AgentState {
   const [activeAgent, setActiveAgentRaw] = useState<AgentId>("profile");
   const [statuses, setStatuses] = useState<Record<AgentId, AgentStatus>>({ ...INITIAL_STATUSES });
-  const statusesRef = useRef(statuses);
-  statusesRef.current = statuses;
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
   const [matchedTenders, setMatchedTendersRaw] = useState<TenderWithScore[]>([]);
   const [tenderAnalysis, setTenderAnalysisRaw] = useState<TenderAnalysisData | null>(null);
@@ -46,9 +44,9 @@ export function useAgent(): AgentState {
 
   const setActiveAgent = useCallback(
     (id: AgentId) => {
-      if (statusesRef.current[id] === "locked") return;
-      setActiveAgentRaw(id);
       setStatuses((prev) => {
+        if (prev[id] === "locked") return prev;
+        setActiveAgentRaw(id);
         const next = { ...prev };
         if (next[id] !== "completed") {
           next[id] = "active";
