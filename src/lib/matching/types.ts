@@ -10,6 +10,16 @@ export interface LocationResult {
   score: number; // 0 or 100
 }
 
+export interface EmbeddingResult {
+  score: number; // 0-100
+}
+
+export interface KeywordResult {
+  score: number; // 0-100
+  matchedKeywords: string[];
+  details: { keyword: string; matchedVia: string; idfWeight: number }[];
+}
+
 export interface ScoredTender extends Tender {
   match_score: number; // 0-100 combined
   bm25_score: number; // 0-100
